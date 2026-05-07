@@ -24,8 +24,7 @@
 #   7) removedrive('Z')
 #
 # NOTES:
-#   - Most functions print informational messages (logger hooks are currently
-#     commented out).
+#   - This module uses built-in Python logging/prints only.
 #   - mapdrive/removedrive and run_win_cmd return shell command exit codes or
 #     outputs so callers can react to failures.
 #
@@ -35,22 +34,24 @@ import shutil
 import subprocess
 import datetime
 import os
+import logging
 # non-standard
 import zipfile
-import config
 
-logfile = config.log["logfile"]
-logpath = config.log['logpath']
-teamsURL = config.teams['webhook']
+try:
+    import config
+except ModuleNotFoundError:
+    config = None
 
-'''teams = webhooks.Teams(
-    hook_url=teamsURL,
-    summary="Oracle Connection",
-    notify_only=False,
-    subtitle="Logs are in Appworx"
-    )
-bearLogger.add_webhook(teams)'''
-# bearLogger.change_path(directory=logpath, filename=logfile)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+if config is not None:
+    logfile = config.log.get('logfile', 'unc_util.log')
+    logpath = config.log.get('logpath', '.')
+else:
+    logfile = 'unc_util.log'
+    logpath = '.'
 
 
 # creates a logfile name variable to track the messages used in the log script
@@ -86,12 +87,12 @@ def mapdrive(path, driveletter, username=None, passwd=None):
         result_code = subprocess.call(f'net use {driveletter}: {path}', shell=True)
         message_no_pass = f'Mapping {driveletter}: as {path}.'
         print(message_no_pass)
-        # bearLogger.log('INFO', message_no_pass)
+        logger.info(message_no_pass)
     else:
         result_code = subprocess.call(f'net use {driveletter}: {path} /user:{username} {passwd}', shell=True)
         message_pass = f'Mapping {driveletter}: as {path} using {username}.'
         print(message_pass)
-        # bearLogger.log('INFO', message_pass)
+        logger.info(message_pass)
     return result_code
 
 
@@ -105,7 +106,7 @@ def removedrive(driveletter):
     result_code = subprocess.call(f'net use {driveletter}: /delete', shell=True)
     message_remove = f'Deleting {driveletter}: drive.'
     print(message_remove)
-    # bearLogger.log('INFO', message_remove)
+    logger.info(message_remove)
     return result_code
 
 
@@ -125,26 +126,17 @@ def movefile(file_start_path, file_end_path, filename_start, filename_end=None):
             filename_end_path_new = os.path.join(file_end_path, filename_end_new)
             shutil.move(filename_start_path, filename_end_path_new)
             message_rename = f'Renaming {filename_start_path} and moving to {filename_end_path_new}.'
-            try:
-                print(message_rename)
-                # bearLogger.log('INFO', message_rename)
-            except NameError:
-                print(message_rename)
+            print(message_rename)
+            logger.info(message_rename)
         else:
             shutil.move(filename_start_path, filename_end_path)
             message_move = f'Moving {filename_start_path} to {filename_end_path}.'
-            try:
-                print(message_move)
-                # bearLogger.log('INFO', message_move)
-            except NameError:
-                print(message_move)
+            print(message_move)
+            logger.info(message_move)
     except FileNotFoundError:
         message_none = f'File {filename_start} not found.'
-        try:
-            print(message_none)
-            # bearLogger.log('INFO', message_none)
-        except NameError:
-            print(message_none)
+        print(message_none)
+        logger.error(message_none)
 
 
 def delete_old_files(delete_path, delete_older_days, file_extension):
@@ -167,12 +159,12 @@ def delete_old_files(delete_path, delete_older_days, file_extension):
             deleted_count += 1
             message_delete = f'{file_name} deleted'
             print(message_delete)
-            # bearLogger.log('INFO', message_delete)
+            logger.info(message_delete)
         else:
             kept_count += 1
             message_keep = f'{file_name} not deleted'
             print(message_keep)
-            # bearLogger.log('INFO', message_keep)
+            logger.info(message_keep)
     return {'deleted': deleted_count, 'kept': kept_count, 'checked': len(delete_files)}
 
 
@@ -185,18 +177,18 @@ def zip_writer(to_zip, zip_filename, delete_old=True):
         with zipfile.ZipFile(zip_filename, 'w') as zipper:
             zip_message = f'Files to zip: {to_zip} creating {zip_filename}'
             print(zip_message)
-            # bearLogger.log('INFO', zip_message)
+            logger.info(zip_message)
             for file_path in to_zip:
-                zipper.write(file_path, compress_type=zipfile.ZIP_DEFLATED)
+                zipper.write(file_path, arcname=os.path.basename(file_path), compress_type=zipfile.ZIP_DEFLATED)
                 if delete_old:
                     delete_message = f'{file_path} deleted.'
                     print(delete_message)
-                    # bearLogger.log('INFO', delete_message)
+                    logger.info(delete_message)
                     os.remove(file_path)
     else:
         zip_message = 'No files found'
         print(zip_message)
-        # bearLogger.log('INFO', zip_message)
+        logger.info(zip_message)
 
 
 def run_win_cmd(cmd):
@@ -218,15 +210,15 @@ def run_win_cmd(cmd):
 
     for output_line in stdout_lines:
         print(output_line)
-        # bearLogger.log('DEBUG', output_line)
+        logger.debug(output_line)
 
     if process.returncode != 0:
         for error_line in stderr_lines:
             print(error_line)
-            # bearLogger.log('ERROR', error_line)
+            logger.error(error_line)
         cmd_message = 'Command failed'
         print(cmd_message)
-        # bearLogger.log('ERROR', cmd_message)
+        logger.error(cmd_message)
         raise Exception(f'cmd {cmd} failed, see above for details')
 
     return stdout_lines
