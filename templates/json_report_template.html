@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{TITLE}}</title>
+    <style>
+{{CSS_CONTENT}}
+    </style>
+</head>
+<body>
+    <main class="page">
+        <section class="panel">
+            <header class="header">
+                <h1>{{TITLE}}</h1>
+                <div class="controls">
+                    <input id="search" type="text" placeholder="Search by path or value (e.g. root.job.id, host, failed)">
+                    <button id="expand-all" type="button">Expand All</button>
+                    <button id="collapse-all" type="button">Collapse All</button>
+                </div>
+                <div class="meta">
+                    <span>Source: {{SOURCE_NAME}}</span>
+                    <span>Generated UTC: {{GENERATED_AT}}</span>
+                    <span>Summary rows: {{SUMMARY_COUNT}}</span>
+                </div>
+            </header>
+            <div class="content">
+                <section class="summary">
+                    <h2>Run Parameters (Root Scalar Values)</h2>
+                    <div class="summary-grid">{{SUMMARY_HTML}}</div>
+                </section>
+                <section class="tree" id="tree-root">
+                    {{BODY_HTML}}
+                    <div class="no-results" id="no-results">No matches found for current search.</div>
+                </section>
+            </div>
+        </section>
+    </main>
+    <script>
+{{JS_CONTENT}}
+    </script>
+</body>
+</html>
