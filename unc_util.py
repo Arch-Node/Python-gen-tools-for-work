@@ -39,14 +39,10 @@ import os
 import zipfile
 import config
 
-# bear-lib
-# from bearlib.logging import core, webhooks
-# logging stuff
-
 logfile = config.log["logfile"]
 logpath = config.log['logpath']
 teamsURL = config.teams['webhook']
-# bearLogger = core.Logger(level="DEBUG", echo=True, write=True, directory=logpath, filename=logfile)
+
 '''teams = webhooks.Teams(
     hook_url=teamsURL,
     summary="Oracle Connection",
@@ -246,4 +242,95 @@ def free_space_gb(path):
     total_bytes, used_bytes, free_bytes = shutil.disk_usage(os.path.realpath(normalized_path))
     free_gb = round(free_bytes / 1073741824, 2)
     return free_gb
+
+
+def _run_self_tests():
+    """Run lightweight local tests for core utility behavior.
+
+    Why: Quick validation in job-host environments helps catch regressions when
+    no external test runner is configured.
+    """
+    import tempfile
+    import unittest
+
+    class UncUtilTests(unittest.TestCase):
+        def test_splitlog_daily_format(self):
+            log_name = splitlog('testjob', daysplit=0)
+            self.assertTrue(log_name.startswith('testjob_'))
+            self.assertTrue(log_name.endswith('.log'))
+            self.assertNotIn('_to_', log_name)
+
+        def test_splitlog_range_format(self):
+            log_name = splitlog('testjob', daysplit=6)
+            self.assertTrue(log_name.startswith('testjob_'))
+            self.assertIn('_to_', log_name)
+            self.assertTrue(log_name.endswith('.log'))
+
+        def test_movefile_moves_file(self):
+            with tempfile.TemporaryDirectory() as start_dir, tempfile.TemporaryDirectory() as end_dir:
+                source_name = 'source.txt'
+                source_path = os.path.join(start_dir, source_name)
+                with open(source_path, 'w', encoding='utf-8') as source_handle:
+                    source_handle.write('hello')
+
+                movefile(start_dir, end_dir, source_name)
+
+                self.assertFalse(os.path.exists(source_path))
+                self.assertTrue(os.path.exists(os.path.join(end_dir, source_name)))
+
+        def test_delete_old_files_summary(self):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                old_file = os.path.join(temp_dir, 'old.log')
+                new_file = os.path.join(temp_dir, 'new.log')
+
+                with open(old_file, 'w', encoding='utf-8') as old_handle:
+                    old_handle.write('old')
+                with open(new_file, 'w', encoding='utf-8') as new_handle:
+                    new_handle.write('new')
+
+                ten_days_ago = datetime.datetime.now() - datetime.timedelta(days=10)
+                os.utime(old_file, (ten_days_ago.timestamp(), ten_days_ago.timestamp()))
+
+                summary = delete_old_files(temp_dir, delete_older_days=7, file_extension='.log')
+
+                self.assertEqual(summary['checked'], 2)
+                self.assertEqual(summary['deleted'], 1)
+                self.assertEqual(summary['kept'], 1)
+                self.assertFalse(os.path.exists(old_file))
+                self.assertTrue(os.path.exists(new_file))
+
+        def test_zip_writer_keeps_source_when_delete_old_false(self):
+            with tempfile.TemporaryDirectory() as temp_dir:
+                source_file = os.path.join(temp_dir, 'sample.txt')
+                zip_file = os.path.join(temp_dir, 'sample.zip')
+
+                with open(source_file, 'w', encoding='utf-8') as source_handle:
+                    source_handle.write('zip me')
+
+                zip_writer([source_file], zip_file, delete_old=False)
+
+                self.assertTrue(os.path.exists(zip_file))
+                self.assertTrue(os.path.exists(source_file))
+                with zipfile.ZipFile(zip_file, 'r') as zip_handle:
+                    self.assertEqual(zip_handle.namelist(), ['sample.txt'])
+
+        def test_run_win_cmd_success(self):
+            output_lines = run_win_cmd('python -c "print(12345)"')
+            self.assertIn('12345', output_lines)
+
+        def test_free_space_gb_returns_number(self):
+            free_gb = free_space_gb('.')
+            self.assertIsInstance(free_gb, float)
+            self.assertGreaterEqual(free_gb, 0.0)
+
+    suite = unittest.defaultTestLoader.loadTestsFromTestCase(UncUtilTests)
+    return unittest.TextTestRunner(verbosity=2).run(suite)
+
+
+if __name__ == '__main__':
+    if '--run-tests' in os.sys.argv:
+        test_result = _run_self_tests()
+        raise SystemExit(0 if test_result.wasSuccessful() else 1)
+
+    print('unc_util module loaded. Use --run-tests to execute built-in tests.')
 
