@@ -1,4 +1,36 @@
 # python 3.7
+
+# =============================================================================
+# PSEUDOCODE - HOW TO USE THIS MODULE
+# =============================================================================
+#
+# PURPOSE:
+#   Shared utility helpers for Windows/UNC style job automation tasks:
+#     - build rotating log file names
+#     - map/remove network drives
+#     - move/rename files safely
+#     - delete old files by extension and age
+#     - create zip archives
+#     - run shell commands and capture output
+#     - check free disk space in GB
+#
+# TYPICAL FLOW IN A JOB:
+#   1) logfile_name = splitlog('job_name', daysplit=6)
+#   2) mapdrive('\\server\\share', 'Z', username='DOMAIN\\user', passwd='***')
+#   3) movefile(start_dir, end_dir, 'input.txt', 'output.txt')
+#   4) delete_old_files(log_dir, delete_older_days=14, file_extension='.log')
+#   5) zip_writer(['/path/a.log', '/path/b.log'], '/path/archive.zip', delete_old=False)
+#   6) free_gb = free_space_gb('Z:\\')
+#   7) removedrive('Z')
+#
+# NOTES:
+#   - Most functions print informational messages (logger hooks are currently
+#     commented out).
+#   - mapdrive/removedrive and run_win_cmd return shell command exit codes or
+#     outputs so callers can react to failures.
+#
+# =============================================================================
+
 import shutil
 import subprocess
 import datetime
@@ -28,11 +60,16 @@ bearLogger.add_webhook(teams)'''
 # creates a logfile name variable to track the messages used in the log script
 # breaks it up by number of days in daysplit
 def splitlog(logname=None, daysplit=6):
+    """Build a time-windowed log filename.
+
+    Why: Jobs that run frequently need deterministic log naming so operators can
+    quickly locate logs by week/day boundaries.
+    """
     day = datetime.datetime.now().strftime('%d%b%Y')
     dt = datetime.datetime.strptime(day, '%d%b%Y')
     start1 = dt - datetime.timedelta(days=dt.weekday())
     end1 = start1 + datetime.timedelta(days=daysplit)
-    if daysplit is 0:
+    if daysplit == 0:
         startday = datetime.datetime.strftime(start1, '%d%b%Y')
         logfile_name = f'{logname}_{startday}.log'
     else:
@@ -44,30 +81,47 @@ def splitlog(logname=None, daysplit=6):
 
 # maps a drive to the needed path to allow for moving of files and logs the action
 def mapdrive(path, driveletter, username=None, passwd=None):
+    """Map a Windows drive letter to a UNC/network path.
+
+    Why: Some downstream tooling expects drive letters rather than UNC paths.
+    Returns the shell exit code from `net use`.
+    """
     if username is None and passwd is None:
-        subprocess.call(f'net use {driveletter}: {path}')
+        result_code = subprocess.call(f'net use {driveletter}: {path}', shell=True)
         message_no_pass = f'Mapping {driveletter}: as {path}.'
+        print(message_no_pass)
         # bearLogger.log('INFO', message_no_pass)
     else:
-        subprocess.call(f'net use {driveletter}: {path} /user:{ username} {passwd}')
+        result_code = subprocess.call(f'net use {driveletter}: {path} /user:{username} {passwd}', shell=True)
         message_pass = f'Mapping {driveletter}: as {path} using {username}.'
+        print(message_pass)
         # bearLogger.log('INFO', message_pass)
+    return result_code
 
 
 # deletes a drive after it is no longer needed
 def removedrive(driveletter):
-    subprocess.call(f'net use {driveletter}: /delete')
+    """Remove a mapped Windows drive letter.
+
+    Why: Jobs should clean up mapped drives to avoid stale mappings and conflicts.
+    Returns the shell exit code from `net use /delete`.
+    """
+    result_code = subprocess.call(f'net use {driveletter}: /delete', shell=True)
     message_remove = f'Deleting {driveletter}: drive.'
+    print(message_remove)
     # bearLogger.log('INFO', message_remove)
+    return result_code
 
 
 # moves/renames a file and writes a message to a log file
 def movefile(file_start_path, file_end_path, filename_start, filename_end=None):
+    """Move a file, optionally renaming it.
+
+    Why: Prevent accidental overwrite by timestamp-renaming if destination exists.
+    """
     filename_start_path = os.path.join(file_start_path, filename_start)
     if filename_end is None:
         filename_end = filename_start
-    else:
-        pass
     filename_end_path = os.path.join(file_end_path, filename_end)
     try:
         if os.path.isfile(filename_end_path):
@@ -105,54 +159,81 @@ def delete_old_files(delete_path, delete_older_days, file_extension):
     :param delete_older_days: Number of days that
     :param file_extension: file type to be deleted
     :return: returns to the logs if a matched file is deleted or not deleted"""
-    delete_files = [f for f in os.listdir(delete_path) if f.endswith(file_extension)]
-    for file in delete_files:
-        file_path_name_delete = os.path.join(delete_path, file)
+    deleted_count = 0
+    kept_count = 0
+    delete_files = [file_name for file_name in os.listdir(delete_path) if file_name.endswith(file_extension)]
+    for file_name in delete_files:
+        file_path_name_delete = os.path.join(delete_path, file_name)
         modified_date = datetime.datetime.fromtimestamp(os.path.getmtime(file_path_name_delete))
         duration = datetime.datetime.today() - modified_date
         if duration.days > delete_older_days:
             os.remove(file_path_name_delete)
-            message_delete = f'{file} + deleted'
+            deleted_count += 1
+            message_delete = f'{file_name} deleted'
+            print(message_delete)
             # bearLogger.log('INFO', message_delete)
         else:
-            message_keep = f'{file} not deleted'
+            kept_count += 1
+            message_keep = f'{file_name} not deleted'
+            print(message_keep)
             # bearLogger.log('INFO', message_keep)
+    return {'deleted': deleted_count, 'kept': kept_count, 'checked': len(delete_files)}
 
 
 def zip_writer(to_zip, zip_filename, delete_old=True):
+    """Write a zip archive from input files.
+
+    Why: Job outputs are often easier to ship/retain as one archive.
+    """
     if to_zip:
         with zipfile.ZipFile(zip_filename, 'w') as zipper:
             zip_message = f'Files to zip: {to_zip} creating {zip_filename}'
+            print(zip_message)
             # bearLogger.log('INFO', zip_message)
-            for file in to_zip:
-                zipper.write(file, compress_type=zipfile.ZIP_DEFLATED)
+            for file_path in to_zip:
+                zipper.write(file_path, compress_type=zipfile.ZIP_DEFLATED)
                 if delete_old:
-                    delete_message = f'{file} deleted.'
+                    delete_message = f'{file_path} deleted.'
+                    print(delete_message)
                     # bearLogger.log('INFO', delete_message)
-                    os.remove(file)
-                else:
-                    pass
+                    os.remove(file_path)
     else:
         zip_message = 'No files found'
+        print(zip_message)
         # bearLogger.log('INFO', zip_message)
 
 
 def run_win_cmd(cmd):
-    result = []
-    process = subprocess.Popen(cmd,
-                               shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-    for line in process.stdout:
-        result.append(line)
-    errcode = process.returncode
-    for line in result:
-        print('Error')
-        # bearLogger.log('DEBUG', line)
-    if errcode is not None:
+    """Run a shell command and return stdout lines.
+
+    Why: Centralized execution gives consistent failure behavior for automation
+    jobs and avoids silent command failures.
+    """
+    process = subprocess.Popen(
+        cmd,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    stdout_text, stderr_text = process.communicate()
+    stdout_lines = stdout_text.splitlines()
+    stderr_lines = stderr_text.splitlines()
+
+    for output_line in stdout_lines:
+        print(output_line)
+        # bearLogger.log('DEBUG', output_line)
+
+    if process.returncode != 0:
+        for error_line in stderr_lines:
+            print(error_line)
+            # bearLogger.log('ERROR', error_line)
         cmd_message = 'Command failed'
+        print(cmd_message)
         # bearLogger.log('ERROR', cmd_message)
         raise Exception(f'cmd {cmd} failed, see above for details')
+
+    return stdout_lines
 
 
 def free_space_gb(path):
@@ -161,8 +242,8 @@ def free_space_gb(path):
     :param path: the location to check
     :return: the amount of free space in gigabytes
     """
-    path = os.path.join(path)
-    total_bytes, used_bytes, free_bytes = shutil.disk_usage(os.path.realpath(path))
+    normalized_path = os.path.join(path)
+    total_bytes, used_bytes, free_bytes = shutil.disk_usage(os.path.realpath(normalized_path))
     free_gb = round(free_bytes / 1073741824, 2)
     return free_gb
 
