@@ -15,8 +15,8 @@ import sys
 from dataclasses import dataclass
 from typing import List, Optional
 
-from repoprep_lib.common import RepoprepError, append_line, now_stamp
-from repoprep_lib.relink import run_relink_step
+from uncg.repoprep_lib.common import RepoprepError, append_line, now_stamp
+from uncg.repoprep_lib.relink import run_relink_step
 
 
 SID_CONFIG = {

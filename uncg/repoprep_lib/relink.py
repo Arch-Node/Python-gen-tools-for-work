@@ -10,7 +10,7 @@ This module is imported by traced_main and can be called independently.
 import os
 from typing import Optional
 
-from repoprep_lib.common import (
+from uncg.repoprep_lib.common import (
     RepoprepError,
     append_line,
     log_message,

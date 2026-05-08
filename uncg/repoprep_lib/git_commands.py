@@ -9,7 +9,7 @@ by any script running under the correct account.
 import os
 from typing import Optional
 
-from repoprep_lib.common import (
+from uncg.repoprep_lib.common import (
     RepoprepError,
     log_message,
     now_stamp,

@@ -9,7 +9,7 @@ import argparse
 import os
 import sys
 
-from repoprep_lib.git_commands import (
+from uncg.repoprep_lib.git_commands import (
     RepoprepElevatedError,
     chmod_repo_files,
     git_checkout_branch,
