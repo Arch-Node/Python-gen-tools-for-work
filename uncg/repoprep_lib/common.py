@@ -9,7 +9,7 @@ these utilities in each module.
 import datetime
 import os
 import subprocess
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +62,7 @@ def run_command(
     step_name: str,
     cwd: str,
     trace_log: Optional[str],
+    env: Optional[Dict[str, str]] = None,
     redacted_command: Optional[str] = None,
 ) -> int:
     """Run command, stream output to stdout and trace_log, return exit code."""
@@ -73,6 +74,7 @@ def run_command(
         process = subprocess.Popen(
             command,
             cwd=cwd,
+            env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -100,6 +102,7 @@ def run_required_command(
     exit_code: int,
     cwd: str,
     trace_log: Optional[str],
+    env: Optional[Dict[str, str]] = None,
     redacted_command: Optional[str] = None,
 ) -> None:
     """Run command and raise RepoprepError if it exits non-zero."""
@@ -108,6 +111,7 @@ def run_required_command(
         step_name=step_name,
         cwd=cwd,
         trace_log=trace_log,
+        env=env,
         redacted_command=redacted_command,
     )
     if result_code != 0:
