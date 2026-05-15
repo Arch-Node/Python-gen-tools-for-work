@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ellucian Experience – Secure Podman Dev Environment</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 40px;
+      line-height: 1.6;
+      color: #1f2937;
+      max-width: 1000px;
+    }
+    h1, h2, h3 {
+      color: #111827;
+    }
+    h1 {
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 0.3em;
+    }
+    code, pre {
+      background: #f3f4f6;
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    pre {
+      padding: 1em;
+      overflow-x: auto;
+    }
+    .callout {
+      background: #eef2ff;
+      border-left: 4px solid #2563eb;
+      padding: 1em;
+      margin: 1.5em 0;
+    }
+    ul {
+      margin-left: 1.2em;
+    }
+    footer {
+      margin-top: 4em;
+      font-size: 0.85em;
+      color: #6b7280;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Ellucian Experience – Secure Podman Development Environment</h1>
+
+<p>
+This document describes the standardized, security‑focused local development
+environment for building <strong>Ellucian Experience cards</strong> using
+<strong>Podman Desktop</strong> and <strong>podman‑compose</strong>.
+</p>
+
+<div class="callout">
+  <strong>Design Goals</strong>
+  <ul>
+    <li>Support Ellucian Experience React/Node development</li>
+    <li>Run fully headless containers</li>
+    <li>Protect sensitive API credentials</li>
+    <li>Prevent privileged container execution</li>
+    <li>Work consistently on macOS, Windows, and Linux</li>
+  </ul>
+</div>
+
+<hr />
+
+<h2>Why Podman Desktop?</h2>
+
+<p>
+Podman uses a <strong>daemonless, rootless container model</strong>. Containers
+run as direct child processes of the invoking user and do not rely on a
+long‑running privileged daemon. This significantly reduces host risk compared
+to traditional daemon‑based container engines.
+</p>
+
+<ul>
+  <li>No root container execution</li>
+  <li>No privileged daemon</li>
+  <li>Per‑user container isolation</li>
+  <li>Strong fit for API‑driven development involving sensitive data</li>
+</ul>
+
+<p>
+Podman Desktop is used strictly as a <strong>visual management client</strong>
+and does not weaken the underlying security posture. Containers remain headless
+and rootless.
+</p>
+
+<hr />
+
+<h2>Security Principles Applied</h2>
+
+<ul>
+  <li><strong>Rootless containers only</strong></li>
+  <li><strong>No secrets baked into images</strong></li>
+  <li><strong>Least privilege (capabilities dropped)</strong></li>
+  <li><strong>No privilege escalation</strong></li>
+  <li><strong>Headless container execution</strong></li>
+</ul>
+
+<p>
+This model aligns well with FERPA‑adjacent and ERP API integrations such as
+Ethos, where outbound, token‑based access is required without exposing services.
+</p>
+
+<hr />
+
+<h2>Project Layout</h2>
+
+<pre>
+project-root/
+├─ podman-compose.yml
+├─ workspace/
+│  ├─ Containerfile
+│  └─ (Ellucian Experience extension source)
+├─ env/
+│  └─ .experience.env
+├─ secrets/
+│  └─ ethos-token.txt
+└─ .gitignore
+</pre>
+
+<p>
+<strong>Important:</strong> <code>.experience.env</code> and <code>secrets/</code>
+must never be committed to source control.
+</p>
+
+<hr />
+
+<h2>podman-compose.yml</h2>
+
+<pre>
+version: "3.9"
+
+services:
+  experience-dev:
+    image: ellucian/experience-dev:node18
+    container_name: ellucian-experience-dev
+
+    stdin_open: true
+    tty: true
+
+    user: "${UID:-1000}:${GID:-1000}"
+    privileged: false
+
+    cap_drop:
+      - ALL
+
+    security_opt:
+      - no-new-privileges:true
+
+    working_dir: /workspace
+
+    volumes:
+      - ./workspace:/workspace:Z
+      - node-cache:/home/node/.npm
+      - ./secrets:/run/secrets:ro,Z
+
+    env_file:
+      - ./env/.experience.env
+
+    ports:
+      - "3000:3000"
+
+    command: ["bash"]
+
+volumes:
+  node-cache:
+</pre>
+
+<hr />
+
+<h2>Containerfile</h2>
+
+<pre>
+FROM node:18-bullseye
+
+RUN apt-get update && apt-get install -y \
+    git curl bash jq \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g \
+    webpack \
+    webpack-cli \
+    typescript \
+    eslint \
+    bruno
+
+WORKDIR /workspace
+
+CMD ["bash"]
+</pre>
+
+<hr />
+
+<h2>Running the Environment</h2>
+
+<pre>
+podman build -t ellucian/experience-dev:node18 ./workspace
+podman compose up
+</pre>
+
+<p>
+Developers may then bootstrap an Experience extension using:
+</p>
+
+<pre>
+npx ellucian-create-experience-extension my-extension
+cd my-extension
+npm install
+npm run deploy-dev
+</pre>
+
+<hr />
+
+<h2>What This Environment Does NOT Do</h2>
+
+<ul>
+  <li>No inbound public services</li>
+  <li>No privileged containers</li>
+  <li>No token storage in images</li>
+  <li>No Docker daemon</li>
+</ul>
+
+<hr />
+
+<h2>Intended Use</h2>
+
+<p>
+This environment is intended for:
+</p>
+
+<ul>
+  <li>Ellucian Experience card development</li>
+  <li>Ethos API integration testing</li>
+  <li>Secure frontend build pipelines</li>
+</ul>
+
+<p>
+It is not intended as a production runtime or deployment target.
+</p>
+
+<footer>
+  <p>
+    Maintained as a reference architecture for secure Ellucian Experience development
+    using Podman Desktop.
+  </p>
+</footer>
+
+</body>
+</html>

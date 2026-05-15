@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Java 17 Development Pod - Detailed Guide</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+      margin: 0;
+      padding: 2rem;
+      background: #0f172a;
+      color: #e5e7eb;
+    }
+    h1, h2, h3, h4 {
+      color: #fbbf24;
+    }
+    code {
+      background: #020617;
+      padding: 0.15rem 0.35rem;
+      border-radius: 4px;
+      font-family: "Fira Code", Menlo, Monaco, Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+    pre {
+      background: #020617;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      border: 1px solid #1f2937;
+    }
+    a {
+      color: #38bdf8;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    .tagline {
+      font-size: 0.95rem;
+      color: #9ca3af;
+      margin-top: -0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1f2937;
+      margin: 2rem 0;
+    }
+    ul {
+      padding-left: 1.25rem;
+    }
+    li {
+      margin-bottom: 0.25rem;
+    }
+    .pill {
+      display: inline-block;
+      background: #111827;
+      border-radius: 999px;
+      padding: 0.15rem 0.75rem;
+      font-size: 0.8rem;
+      color: #9ca3af;
+      border: 1px solid #1f2937;
+      margin-right: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🧱 Building a Java 17 Development Pod</h1>
+  <p class="tagline">
+    A detailed, learn‑as‑you‑go guide for creating a Java 17 dev environment in a container, wired up to VS Code—no Eclipse required.
+  </p>
+
+  <p>
+    This document walks you through:
+  </p>
+  <ul>
+    <li>Choosing the right base image (and why not Alpine for Java dev)</li>
+    <li>Writing a Dockerfile for OpenJDK 17 and dev tools</li>
+    <li>Adding your custom files into the image</li>
+    <li>Running the container as a dev pod</li>
+    <li>Connecting to it using VS Code Remote Containers</li>
+    <li>Optional: Maven/Gradle and devcontainer configuration</li>
+  </ul>
+
+  <hr />
+
+  <h2>1. 🧩 Understanding the Components</h2>
+
+  <p>Before building anything, it helps to know the main pieces involved:</p>
+
+  <p><span class="pill">Concepts</span></p>
+  <ul>
+    <li>
+      <strong>Docker Image</strong> – A template that defines your environment (OS, tools, configs).  
+      Learn more:
+      <a href="https://www.docker.com/resources/what-container/" target="_blank" rel="noopener noreferrer">
+        What is a container/image?
+      </a>
+    </li>
+    <li>
+      <strong>Dockerfile</strong> – A script that describes how to build your image step by step.  
+      Learn more:
+      <a href="https://docs.docker.com/engine/reference/builder/" target="_blank" rel="noopener noreferrer">
+        Dockerfile reference
+      </a>
+    </li>
+    <li>
+      <strong>Container</strong> – A running instance of an image; think of it as a lightweight, isolated dev machine.
+    </li>
+    <li>
+      <strong>VS Code Dev Containers</strong> – VS Code connects into a container and treats it like a full development environment.  
+      Learn more:
+      <a href="https://code.visualstudio.com/docs/devcontainers/containers" target="_blank" rel="noopener noreferrer">
+        VS Code Dev Containers
+      </a>
+    </li>
+    <li>
+      <strong>OpenJDK 17</strong> – The Java runtime and compiler you’ll use for development.  
+      Learn more:
+      <a href="https://openjdk.org/projects/jdk/17/" target="_blank" rel="noopener noreferrer">
+        OpenJDK 17
+      </a>
+    </li>
+  </ul>
+
+  <hr />
+
+  <h2>2. 🧱 Choosing the Right Base Image</h2>
+
+  <p>You asked whether using an Eclipse ISO or Alpine is better. For a Java development pod, especially one meant to be stable and VS Code–friendly, the best choice is:</p>
+
+  <p><strong>Use an Ubuntu‑based Eclipse Temurin OpenJDK 17 image, not Alpine.</strong></p>
+
+  <h3>Why not Alpine for Java dev?</h3>
+  <ul>
+    <li>Alpine uses <strong>musl libc</strong> instead of <strong>glibc</strong>, which many Java tools expect.</li>
+    <li>Some JVM features and native dependencies can behave differently or break.</li>
+    <li>VS Code server and other tooling can be more fragile on Alpine.</li>
+    <li>You often end up debugging low‑level compatibility issues for minimal size savings.</li>
+  </ul>
+
+  <p>
+    If you’re building a <em>runtime‑only</em> image and are very size‑sensitive, Alpine can make sense.  
+    For a <strong>development environment</strong>, it usually isn’t worth the pain.
+  </p>
+
+  <p><span class="pill">Recommended Base</span></p>
+  <ul>
+    <li>
+      <strong>Eclipse Temurin JDK 17 (Ubuntu-based)</strong>  
+      Learn more:
+      <a href="https://adoptium.net" target="_blank" rel="noopener noreferrer">
+        Eclipse Temurin (Adoptium)
+      </a>
+    </li>
+  </ul>
+
+  <hr />
+
+  <h2>3. 🛠️ The Detailed Dockerfile (with Explanations)</h2>
+
+  <p>
+    Below is a teaching Dockerfile. Every section includes comments explaining why it exists.
+    Save this as <code>Dockerfile</code> in a new directory.
+  </p>
+
+  <pre><code># Use Eclipse Temurin OpenJDK 17 (Ubuntu-based)
+# This avoids Alpine's musl issues and ensures full Java compatibility.
+FROM eclipse-temurin:17-jdk
+
+# Install common development tools
+# - git: version control
+# - curl: downloading files
+# - unzip: extracting archives
+# - bash: VS Code server requires a shell
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    unzip \
+    bash \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+
+# Copy your custom files into the image
+# Replace "custom-config" with your folder name
+# Example: configs, scripts, templates, etc.
+COPY custom-config/ /opt/custom/
+
+# Create a non-root user for VS Code
+# VS Code Remote Containers prefers non-root for security and compatibility
+RUN useradd -ms /bin/bash devuser
+
+# Switch to the new user
+USER devuser
+
+# Set the working directory
+WORKDIR /home/devuser
+</code></pre>
+
+  <p>
+    In the same directory as the Dockerfile, create a folder called <code>custom-config</code> and put any files you want baked into the image there.
+  </p>
+
+  <hr />
+
+  <h2>4. 📦 Build the Image</h2>
+
+  <p>From the directory containing your <code>Dockerfile</code> (and <code>custom-config/</code>), run:</p>
+
+  <pre><code>docker build -t java-dev-env:latest .</code></pre>
+
+  <p>
+    This command:
+  </p>
+  <ul>
+    <li>Reads the <code>Dockerfile</code></li>
+    <li>Builds an image with OpenJDK 17 and your tools</li>
+    <li>Tags it as <code>java-dev-env:latest</code></li>
+  </ul>
+
+  <p>
+    Learn more about <code>docker build</code>:
+    <a href="https://docs.docker.com/engine/reference/commandline/build/" target="_blank" rel="noopener noreferrer">
+      Docker build docs
+    </a>
+  </p>
+
+  <hr />
+
+  <h2>5. ▶️ Run the Container (Your Dev Pod)</h2>
+
+  <p>
+    Now run a container from the image and mount your project into it. From your project directory:
+  </p>
+
+  <pre><code>docker run -it --name java-dev \
+  -v $(pwd):/workspace \
+  -w /workspace \
+  java-dev-env:latest
+</code></pre>
+
+  <p>This does the following:</p>
+  <ul>
+    <li><code>--name java-dev</code> – Names the container <code>java-dev</code> so it’s easy to find.</li>
+    <li><code>-v $(pwd):/workspace</code> – Mounts your current directory into <code>/workspace</code> inside the container.</li>
+    <li><code>-w /workspace</code> – Sets the working directory inside the container.</li>
+    <li><code>-it</code> – Runs interactively with a terminal.</li>
+  </ul>
+
+  <p>
+    Learn more about <code>docker run</code>:
+    <a href="https://docs.docker.com/engine/reference/commandline/run/" target="_blank" rel="noopener noreferrer">
+      Docker run docs
+    </a>
+  </p>
+
+  <hr />
+
+  <h2>6. 🧠 Connect Using VS Code (No Eclipse Needed)</h2>
+
+  <p>
+    Now we wire VS Code into this container so it becomes your full dev environment.
+  </p>
+
+  <h3>Install the VS Code extension</h3>
+  <ul>
+    <li>Extension: <strong>Remote - Containers</strong></li>
+    <li>Marketplace link:
+      <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers"
+         target="_blank" rel="noopener noreferrer">
+        Remote - Containers
+      </a>
+    </li>
+  </ul>
+
+  <h3>Attach VS Code to the running container</h3>
+  <ol>
+    <li>Open VS Code.</li>
+    <li>Press <strong>F1</strong> (or Ctrl+Shift+P / Cmd+Shift+P).</li>
+    <li>Run: <strong>Remote-Containers: Attach to Running Container...</strong></li>
+    <li>Select <code>java-dev</code> from the list.</li>
+  </ol>
+
+  <p>VS Code will:</p>
+  <ul>
+    <li>Install its server inside the container.</li>
+    <li>Give you IntelliSense, debugging, terminals, etc.</li>
+    <li>Treat the container like a full dev machine.</li>
+  </ul>
+
+  <p>
+    More details:
+    <a href="https://code.visualstudio.com/docs/devcontainers/containers" target="_blank" rel="noopener noreferrer">
+      VS Code Dev Containers documentation
+    </a>
+  </p>
+
+  <hr />
+
+  <h2>7. 📚 Optional: Add Maven or Gradle</h2>
+
+  <p>
+    If your Java projects use Maven or Gradle, you can bake them into the image.
+  </p>
+
+  <h3>Add Maven</h3>
+  <p>Add this to your Dockerfile after the first <code>RUN apt-get ...</code> block (or merge it in):</p>
+
+  <pre><code>RUN apt-get update &amp;&amp; apt-get install -y maven \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+</code></pre>
+
+  <p>Learn more: <a href="https://maven.apache.org" target="_blank" rel="noopener noreferrer">Maven</a></p>
+
+  <h3>Add Gradle</h3>
+  <p>Similarly, for Gradle:</p>
+
+  <pre><code>RUN apt-get update &amp;&amp; apt-get install -y gradle \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+</code></pre>
+
+  <p>Learn more: <a href="https://gradle.org" target="_blank" rel="noopener noreferrer">Gradle</a></p>
+
+  <hr />
+
+  <h2>8. 📘 Optional: Add a Dev Container Config (Recommended)</h2>
+
+  <p>
+    You can make this setup even smoother by adding a
+    <code>.devcontainer/devcontainer.json</code> file to your project. This tells VS Code exactly how to use your image.
+  </p>
+
+  <p>Create a folder <code>.devcontainer</code> in your project, and inside it create <code>devcontainer.json</code>:</p>
+
+  <pre><code>{
+  "name": "Java Dev Pod",
+  "image": "java-dev-env:latest",
+  "remoteUser": "devuser",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack"
+      ]
+    }
+  }
+}
+</code></pre>
+
+  <p>This configuration:</p>
+  <ul>
+    <li>Tells VS Code to use the <code>java-dev-env:latest</code> image.</li>
+    <li>Uses the <code>devuser</code> user we created in the Dockerfile.</li>
+    <li>Sets the workspace folder to <code>/workspace</code>.</li>
+    <li>Automatically installs the Java extension pack in VS Code.</li>
+  </ul>
+
+  <p>
+    Learn more:
+    <a href="https://code.visualstudio.com/docs/devcontainers/containers" target="_blank" rel="noopener noreferrer">
+      Dev Containers in VS Code
+    </a>
+  </p>
+
+  <hr />
+
+  <h2>9. 🎯 Final Thoughts</h2>
+
+  <p>You now have a clear, repeatable setup for a Java 17 development pod:</p>
+  <ul>
+    <li>A <strong>Dockerfile</strong> that uses a solid, Java‑friendly base image.</li>
+    <li><strong>OpenJDK 17</strong> plus common dev tools installed.</li>
+    <li>Your <strong>custom files</strong> baked into the image under <code>/opt/custom</code>.</li>
+    <li>A <strong>container</strong> you can attach to from VS Code instead of using Eclipse.</li>
+    <li>Optional <strong>Maven/Gradle</strong> and <strong>devcontainer.json</strong> for a smoother workflow.</li>
+  </ul>
+
+  <p>
+    From here, you can extend this setup with debugging configs, Kubernetes manifests, or CI builds that use the same image—so your dev pod and your build environment stay in sync.
+  </p>
+
+</body>
+</html>
+

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Developer Environments – Design & Implementation Reference</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      line-height: 1.7;
+      color: #1f2937;
+    }
+    h1, h2, h3, h4 {
+      color: #111827;
+    }
+    h1 {
+      border-bottom: 3px solid #2563eb;
+      padding-bottom: 0.3em;
+    }
+    pre {
+      background: #f3f4f6;
+      padding: 16px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 0.9em;
+    }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    .callout {
+      background: #eef2ff;
+      border-left: 4px solid #2563eb;
+      padding: 1em;
+      margin: 1.5em 0;
+    }
+    .why {
+      background: #fefce8;
+      border-left: 4px solid #eab308;
+      padding: 1em;
+      margin: 1.5em 0;
+    }
+    hr {
+      margin: 3em 0;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Developer Environments – Design & Implementation</h1>
+
+<div class="callout">
+  <strong>Design Anchor</strong><br>
+  Containers define environments.<br>
+  Editors are user choice.<br>
+  Standardization is achieved by making the best path the easiest path.
+</div>
+
+<hr>
+
+<h2>Why This Exists</h2>
+
+<div class="why">
+  <p>
+    This repository exists to solve three recurring problems:
+  </p>
+  <ul>
+    <li>Developers lose time aligning local machines instead of writing code.</li>
+    <li>Rigid editor mandates create resistance and shadow workflows.</li>
+    <li>Powerful environments (Oracle, Java, Python, APIs) increase blast radius if poorly isolated.</li>
+  </ul>
+  <p>
+    The solution is not “one tool for everyone,” but a disciplined separation of concerns.
+  </p>
+</div>
+
+<hr>
+
+<h2>Conceptual Model (Memorize This)</h2>
+
+<div class="callout">
+  <strong>Layer 1 – Workstation</strong><br>
+  Tools that help you work (Git, VS Code, Podman).
+</div>
+
+<div class="callout">
+  <strong>Layer 2 – Containers</strong><br>
+  Reproducible, disposable development environments.
+</div>
+
+<div class="callout">
+  <strong>Layer 3 – Editors</strong><br>
+  Windows into the same environment, nothing more.
+</div>
+
+<div class="why">
+  Editors are intentionally <em>outside</em> the environment boundary so that:
+  <ul>
+    <li>UltraEdit users are not blocked</li>
+    <li>VS Code users gain extra convenience naturally</li>
+    <li>Secrets and credentials never live in editor state</li>
+  </ul>
+</div>
+
+<hr>
+
+<h2>Repository Structure</h2>
+
+<pre><code>
+dev-environments/
+├─ README.md
+├─ SECURITY.md
+├─ docs/
+│  ├─ architecture.md
+│  ├─ workflow.md
+│  └─ editors.md
+├─ scripts/
+│  ├─ bootstrap-dev-workstation.ps1
+│  ├─ install-powershell-macos.sh
+│  ├─ setup-openjdk17-dev.ps1
+│  ├─ setup-plsql-python-dev.ps1
+│  └─ setup-experience-dev.ps1
+├─ openjdk17/
+├─ plsql-python/
+└─ experience/
+</code></pre>
+
+<div class="why">
+  Each environment is self-contained.  
+  No global Dockerfiles.  
+  No hidden coupling between stacks.
+</div>
+
+<hr>
+
+<h2>Easy Mode: Developer Workstation Bootstrap</h2>
+
+<h3>scripts/bootstrap-dev-workstation.ps1</h3>
+
+<div class="why">
+  This script exists to remove friction, not enforce policy.
+  It installs recommended tools so the “happy path” is obvious,
+  while leaving choice intact.
+</div>
+
+<pre><code>
+# Installs:
+# - Git
+# - GitHub Desktop
+# - VS Code
+# - Podman Desktop
+# - Notepad++ (Windows)
+# - VS Code Remote / Containers / Java tooling
+</code></pre>
+
+<div class="callout">
+  VS Code is recommended because it integrates deeply with containers.<br>
+  It is not required.
+</div>
+
+<hr>
+
+<h2>macOS Helper: PowerShell Installation</h2>
+
+<h3>scripts/install-powershell-macos.sh</h3>
+
+<div class="why">
+  PowerShell is the cross-platform automation layer.
+  Bash installs PowerShell; PowerShell installs everything else.
+</div>
+
+<pre><code>
+#!/usr/bin/env bash
+set -e
+
+if [[ "$OSTYPE" != "darwin"* ]]; then
+  echo "macOS only"
+  exit 1
+fi
+
+if ! command -v brew >/dev/null; then
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+fi
+
+if ! command -v pwsh >/dev/null; then
+  brew install --cask powershell
+fi
+
+pwsh -NoProfile -Command '$PSVersionTable.PSVersion'
+</code></pre>
+
+<hr>
+
+<h2>OpenJDK 17 Dev Environment</h2>
+
+<h3>Design Reasoning</h3>
+
+<div class="why">
+  Java 17 is LTS, container-aware, and stable.
+  The container holds the JDK; the host does not.
+</div>
+
+<h3>openjdk17/Containerfile</h3>
+
+<pre><code>
+FROM eclipse-temurin:17-jdk-jammy
+
+RUN apt-get update && apt-get install -y \
+    curl git bash openssh-client \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+CMD ["bash"]
+</code></pre>
+
+<h3>openjdk17/podman-compose.yml</h3>
+
+<pre><code>
+services:
+  openjdk17:
+    image: openjdk17-dev
+    volumes:
+      - ./workspace:/workspace:Z
+    tty: true
+    stdin_open: true
+</code></pre>
+
+<hr>
+
+<h2>PL/SQL + Python Dev Environment</h2>
+
+<h3>Design Reasoning</h3>
+
+<div class="why">
+  Oracle and Python combine high power with high risk.
+  Containers enforce structure; humans retain execution authority.
+</div>
+
+<h3>Dependency Strategy</h3>
+
+<div class="callout">
+  Base dependencies are mandatory.<br>
+  Optional dependencies are explicitly opt-in.
+</div>
+
+<h4>plsql-python/requirements/base.txt</h4>
+
+<pre><code>
+python-oracledb
+cx_Oracle
+requests
+</code></pre>
+
+<h4>plsql-python/requirements/data.txt</h4>
+
+<pre><code>
+pandas
+pyarrow
+</code></pre>
+
+<h4>plsql-python/requirements/ml.txt</h4>
+
+<pre><code>
+torch
+scikit-learn
+</code></pre>
+
+<h3>Optional Package Installation</h3>
+
+<pre><code>
+OPTIONAL_PYTHON_PACKAGES=data,ml
+</code></pre>
+
+<div class="why">
+  This keeps the environment universal without forcing
+  heavyweight libraries on every developer.
+</div>
+
+<hr>
+
+<h2>Experience Dev Environment</h2>
+
+<div class="why">
+  Frontend and API work benefits from isolation and speed.
+  Node tooling lives in the container, not the host.
+</div>
+
+<h3>experience/Containerfile</h3>
+
+<pre><code>
+FROM node:18-bullseye
+
+RUN apt-get update && apt-get install -y \
+    git curl bash jq \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+CMD ["bash"]
+</code></pre>
+
+<hr>
+
+<h2>Security Rules (Non-Negotiable)</h2>
+
+<ul>
+  <li>No secrets in Git</li>
+  <li>No secrets baked into images</li>
+  <li>No auto-execution against production systems</li>
+  <li>Containers prepare intent; humans execute intent</li>
+</ul>
+
+<div class="callout">
+  If you can explain it on paper,<br>
+  you can defend it in a review,<br>
+  and maintain it under pressure.
+</div>
+
+<hr>
+
+<h2>Final Memory Anchors</h2>
+
+<ul>
+  <li>Easy mode installs tools</li>
+  <li>Containers define environments</li>
+  <li>Editors are replaceable</li>
+  <li>Optional means explicit intent</li>
+</ul>
+
+</body>
+</html>
