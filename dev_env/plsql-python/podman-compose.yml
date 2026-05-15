@@ -1,0 +1,13 @@
+services:
+  plsql-python:
+    image: dev-env-plsql-python:latest
+    build:
+      context: .
+      dockerfile: Containerfile
+    volumes:
+      - ./workspace:/workspace:Z
+      - ./secrets:/run/secrets:ro,Z
+    env_file:
+      - ./env/.plsql.env
+    tty: true
+    stdin_open: true

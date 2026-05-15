@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  ellucian-experience-dev:
+    image: dev-env-ellucian-experience:latest
+    container_name: ellucian-experience-dev
+
+    stdin_open: true
+    tty: true
+
+    user: "${UID:-1000}:${GID:-1000}"
+    privileged: false
+
+    cap_drop:
+      - ALL
+
+    security_opt:
+      - no-new-privileges:true
+
+    working_dir: /workspace
+
+    volumes:
+      - ./workspace:/workspace:Z
+      - node-cache:/home/node/.npm
+      - ./secrets:/run/secrets:ro,Z
+
+    env_file:
+      - ./env/.experience.env
+
+    ports:
+      - "3000:3000"
+
+    command: ["bash"]
+
+volumes:
+  node-cache:

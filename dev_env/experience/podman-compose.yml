@@ -1,0 +1,10 @@
+services:
+  experience:
+    image: dev-env-experience:latest
+    build:
+      context: .
+      dockerfile: Containerfile
+    volumes:
+      - ./workspace:/workspace:Z
+    tty: true
+    stdin_open: true

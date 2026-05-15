@@ -1,0 +1,49 @@
+name: Build dev_env images
+
+on:
+  push:
+    paths:
+      - 'dev_env/**'
+  pull_request:
+    paths:
+      - 'dev_env/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env:
+          - openjdk17
+          - experience
+          - plsql-python
+          - ellucian-experience
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image name
+        run: |
+          echo "IMAGE_NAME=dev-env-${{ matrix.env }}" >> $GITHUB_ENV
+          echo "CONTEXT=dev_env/${{ matrix.env }}" >> $GITHUB_ENV
+
+      - name: Build container image
+        run: |
+          if [ "${{ matrix.env }}" = "plsql-python" ]; then
+            if [ -d "dev_env/plsql-python/oracle-client" ]; then
+              docker build -t "$IMAGE_NAME:latest" "$CONTEXT"
+            else
+              echo "Skipping plsql-python build because oracle-client files are not present."
+              exit 0
+            fi
+          else
+            docker build -t "$IMAGE_NAME:latest" "$CONTEXT"
+          fi
+
+      - name: List built image
+        run: |
+          if [ "${{ matrix.env }}" != "plsql-python" ] || [ -d "dev_env/plsql-python/oracle-client" ]; then
+            docker images --format "{{.Repository}}:{{.Tag}}" | grep "dev-env-${{ matrix.env }}:latest"
+          else
+            echo "plsql-python build skipped"
+          fi

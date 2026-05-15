@@ -1,0 +1,15 @@
+FROM node:18-bullseye
+
+RUN apt-get update && apt-get install -y \
+    git curl bash jq \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN npm install -g \
+    webpack \
+    webpack-cli \
+    typescript \
+    eslint \
+    bruno
+
+WORKDIR /workspace
+CMD ["bash"]
