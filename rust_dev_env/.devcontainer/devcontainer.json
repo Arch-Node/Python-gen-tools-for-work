@@ -8,7 +8,6 @@
   "remoteUser": "vscode",
   "updateRemoteUserUID": false,
   "runArgs": [
-    "--userns=keep-id",
     "--security-opt",
     "label=disable"
   ],

@@ -70,6 +70,10 @@ Expected:
 unix:///run/user/$UID/podman/podman.sock
 ```
 
+Note: Dev Containers log messages still say `docker ...` even when it is using
+Podman via `DOCKER_HOST`. Confirm by checking the log for `Host:
+unix:///run/user/<uid>/podman/podman.sock` and `Server: ... Podman Engine`.
+
 ## Dynamic Startup Installs
 
 ### Option A: File-driven
@@ -129,9 +133,7 @@ If you see errors like:
 `Unable to create ... .git/index.lock: Permission denied`
 
 the container likely mounted your parent repository Git root. This setup now pins
-the workspace to your opened folder only by disabling Git-root auto-mount, and
-it enables Podman `--userns=keep-id` so bind-mounted files are writable by your
-container user.
+the workspace to your opened folder only by disabling Git-root auto-mount.
 
 Apply it with:
 
