@@ -1,0 +1,37 @@
+{
+  "name": "rust-dev-podman",
+  "mountWorkspaceGitRoot": false,
+  "build": {
+    "dockerfile": "Containerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": false,
+  "runArgs": [
+    "--security-opt",
+    "label=disable"
+  ],
+  "mounts": [
+    "source=rust-cargo-registry-vscode,target=/home/vscode/.cargo/registry,type=volume",
+    "source=rust-cargo-git-vscode,target=/home/vscode/.cargo/git,type=volume",
+    "source=rust-rustup-vscode,target=/home/vscode/.rustup,type=volume"
+  ],
+  "containerEnv": {
+    "CARGO_HOME": "/home/vscode/.cargo",
+    "RUSTUP_HOME": "/home/vscode/.rustup",
+    "CARGO_TERM_COLOR": "always",
+    "RUST_BACKTRACE": "1"
+  },
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "bash .devcontainer/scripts/post-start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "serayuzgur.crates"
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "dev.containers.dockerPath": "podman",
+  "remote.containers.dockerPath": "podman",
+  "dev.containers.mountWorkspaceGitRoot": false,
+  "remote.containers.mountWorkspaceGitRoot": false,
+  "rust-analyzer.check.command": "clippy"
+}

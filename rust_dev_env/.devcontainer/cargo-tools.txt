@@ -1,0 +1,5 @@
+# Installed once during postCreate.
+# One cargo crate name per line.
+
+cargo-edit
+cargo-watch
