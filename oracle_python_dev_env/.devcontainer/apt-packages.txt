@@ -1,0 +1,6 @@
+# Installed once during postCreate.
+# One package per line.
+
+build-essential
+python3-dev
+git

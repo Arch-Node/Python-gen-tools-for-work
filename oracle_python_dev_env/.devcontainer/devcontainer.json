@@ -1,0 +1,43 @@
+{
+  "name": "oracle-python-dev-podman",
+  "mountWorkspaceGitRoot": false,
+  "build": {
+    "dockerfile": "Containerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": false,
+  "runArgs": [
+    "--security-opt",
+    "label=disable"
+  ],
+  "mounts": [
+    "source=oracle-python-pip-cache-vscode,target=/home/vscode/.cache/pip,type=volume"
+  ],
+  "containerEnv": {
+    "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+    "PYTHONUNBUFFERED": "1",
+    "ORACLE_HOME": "/opt/oracle/instantclient",
+    "LD_LIBRARY_PATH": "/opt/oracle/instantclient",
+    "EXTRA_APT_PACKAGES": "",
+    "EXTRA_PIP_TOOLS": "",
+    "ORACLE_BASIC_URL": "",
+    "ORACLE_SDK_URL": "",
+    "ORACLE_SQLPLUS_URL": ""
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/opt/oracle/instantclient"
+  },
+  "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
+  "postStartCommand": "bash .devcontainer/scripts/post-start.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "charliermarsh.ruff"
+      ]
+    }
+  }
+}

@@ -1,0 +1,8 @@
+# Installed once during postCreate.
+# One package per line.
+
+oracledb
+pytest
+black
+ruff
+ipython

@@ -1,0 +1,3 @@
+# Installed each container start (only if missing).
+# Use for packages you add often without full rebuild.
+# One package per line.

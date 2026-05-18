@@ -1,0 +1,13 @@
+{
+  "dev.containers.dockerPath": "podman",
+  "remote.containers.dockerPath": "podman",
+  "dev.containers.mountWorkspaceGitRoot": false,
+  "remote.containers.mountWorkspaceGitRoot": false,
+  "python.defaultInterpreterPath": "/usr/local/bin/python",
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true
+  }
+}
