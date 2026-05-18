@@ -47,7 +47,7 @@ if (-not (Test-Path $OracleDir)) {
 $ContainerfilePath = Join-Path $RootDir "Containerfile"
 
 if (-not (Test-Path $ContainerfilePath)) {
-@"
+@'
 FROM python:3.12-slim
 
 # OS dependencies
@@ -61,7 +61,7 @@ RUN apt-get update && apt-get install -y \\
 # Oracle Instant Client
 ENV ORACLE_BASE=/opt/oracle
 ENV LD_LIBRARY_PATH=\$ORACLE_BASE/instantclient
-ENV PATH=\$PATH:\$ORACLE_BASE/instantclient
+ENV PATH=\${PATH:}\$ORACLE_BASE/instantclient
 
 WORKDIR /opt/oracle
 
@@ -79,7 +79,7 @@ RUN pip install --no-cache-dir \\
 
 WORKDIR /workspace
 CMD ["bash"]
-"@ | Set-Content $ContainerfilePath -Encoding UTF8
+'@ | Set-Content $ContainerfilePath -Encoding UTF8
 
 Write-Host "Containerfile created"
 }
@@ -102,8 +102,8 @@ Write-Host "Starting dev container in pod..."
 podman run -it `
   --name $ContainerName `
   --pod $PodName `
-  -v "$WorkspaceDir:/workspace:Z" `
-  -v "$SecretsDir:/run/secrets:ro,Z" `
+  -v "${WorkspaceDir}:/workspace:Z" `
+  -v "${SecretsDir}:/run/secrets:ro,Z" `
   --env-file "$EnvDir/.plsql.env" `
   $ImageName
 
