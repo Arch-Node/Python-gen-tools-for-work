@@ -1,6 +1,8 @@
 {
   "dev.containers.dockerPath": "podman",
   "remote.containers.dockerPath": "podman",
+  "dev.containers.dockerSocketPath": "/run/user/${localEnv:UID}/podman/podman.sock",
+  "remote.containers.dockerSocketPath": "/run/user/${localEnv:UID}/podman/podman.sock",
   "dev.containers.mountWorkspaceGitRoot": false,
   "remote.containers.mountWorkspaceGitRoot": false,
   "python.defaultInterpreterPath": "/usr/local/bin/python",

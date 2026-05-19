@@ -6,6 +6,20 @@ STARTUP_APT_FILE="$ROOT_DIR/.devcontainer/startup-apt-packages.txt"
 STARTUP_PIP_FILE="$ROOT_DIR/.devcontainer/startup-pip-tools.txt"
 ORACLE_LINK_DIR="/opt/oracle/instantclient"
 
+# Keep user-installed Python script entrypoints available during startup tasks.
+export PATH="$HOME/.local/bin:$PATH"
+
+ensure_python_dirs_writable() {
+  local pip_cache_dir="$HOME/.cache/pip"
+  local user_base_dir="$HOME/.local"
+
+  mkdir -p "$pip_cache_dir" "$user_base_dir"
+
+  if [[ ! -w "$pip_cache_dir" || ! -w "$user_base_dir" ]]; then
+    sudo chown -R "$(id -u):$(id -g)" "$HOME/.cache" "$user_base_dir"
+  fi
+}
+
 read_list_file() {
   local file_path="$1"
   if [[ -f "$file_path" ]]; then
@@ -65,7 +79,7 @@ install_missing_pip_tools() {
     fi
 
     echo "Installing missing Python package: $tool"
-    python -m pip install "$tool"
+    python -m pip install --user "$tool"
   done
 }
 
@@ -77,6 +91,7 @@ mapfile -t env_pip < <(append_env_words "${EXTRA_PIP_TOOLS:-}")
 startup_apt+=("${env_apt[@]}")
 startup_pip+=("${env_pip[@]}")
 
+ensure_python_dirs_writable
 install_missing_apt_packages "${startup_apt[@]}"
 install_missing_pip_tools "${startup_pip[@]}"
 
