@@ -1,4 +1,8 @@
 {
+  "dev.containers.cli": "podman",
+  "remote.containers.cli": "podman",
+  "dev.containers.executeInWSLDistro": "podman-machine-default",
+  "remote.containers.executeInWSLDistro": "podman-machine-default",
   "dev.containers.dockerPath": "podman",
   "remote.containers.dockerPath": "podman",
   "dev.containers.dockerSocketPath": "/run/user/${localEnv:UID}/podman/podman.sock",

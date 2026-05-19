@@ -1,0 +1,9 @@
+{
+  "dev.containers.executeInWSLDistro": "podman-machine-default",
+  "dev.containers.dockerPath": "podman",
+  "dev.containers.defaultExtensions": ["ms-python.python", "ms-python.vscode-pylance"],
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
+

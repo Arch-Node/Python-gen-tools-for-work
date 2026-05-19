@@ -3,7 +3,10 @@
   "mountWorkspaceGitRoot": false,
   "build": {
     "dockerfile": "Containerfile",
-    "context": ".."
+    "context": "..",
+    "args": {
+      "BUILDKIT_CONTEXT_KEEP_GIT_DIR": "1"
+    }
   },
   "remoteUser": "vscode",
   "updateRemoteUserUID": false,
@@ -30,7 +33,9 @@
     "ORACLE_SQLPLUS_URL": ""
   },
   "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/opt/oracle/instantclient:/home/vscode/.local/bin"
+    "PATH": "${containerEnv:PATH}:/opt/oracle/instantclient:/home/vscode/.local/bin",
+    "DOCKER_HOST": "unix:///run/user/1000/podman/podman.sock",
+    "CONTAINER_HOST": "unix:///run/user/1000/podman/podman.sock"
   },
   "postCreateCommand": "bash .devcontainer/scripts/post-create.sh",
   "postStartCommand": "bash .devcontainer/scripts/post-start.sh",
@@ -41,7 +46,10 @@
         "ms-python.vscode-pylance",
         "ms-python.black-formatter",
         "charliermarsh.ruff"
-      ]
+      ],
+      "settings": {
+        "dev.containers.cli": "podman"
+      }
     }
   }
 }
