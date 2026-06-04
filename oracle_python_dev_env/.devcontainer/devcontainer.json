@@ -1,6 +1,7 @@
 {
   "name": "oracle-python-dev-podman",
-  "mountWorkspaceGitRoot": false,
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "build": {
     "dockerfile": "Containerfile",
     "context": "..",

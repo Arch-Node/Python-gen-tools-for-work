@@ -21,7 +21,9 @@ param()
 Set-StrictMode -Version Latest
 
 function Assert-Admin {
-    if (-not ([bool](net session 2>$null))) {
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
         Write-Error 'This script must be run as Administrator.'
         exit 1
     }
@@ -43,8 +45,17 @@ function Download-File {
 
 function Get-FeatureState {
     param([string]$FeatureName)
-    $feature = Get-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction SilentlyContinue
-    return if ($feature) { $feature.State } else { 'Disabled' }
+    try {
+        $feature = Get-WindowsOptionalFeature -Online -FeatureName $FeatureName -ErrorAction Stop
+        return $feature.State
+    } catch {
+        Write-Host "Falling back to DISM for feature state check: $FeatureName" -ForegroundColor Yellow
+        $output = & dism.exe /online /Get-FeatureInfo /FeatureName:$FeatureName 2>$null
+        if ($output -match 'State\s*: Enabled') {
+            return 'Enabled'
+        }
+        return 'Disabled'
+    }
 }
 
 function Enable-FeatureIfNeeded {
@@ -56,7 +67,12 @@ function Enable-FeatureIfNeeded {
     }
 
     Write-Host "Enabling $Description..." -ForegroundColor Yellow
-    Enable-WindowsOptionalFeature -Online -FeatureName $FeatureName -NoRestart -All | Out-Null
+    try {
+        Enable-WindowsOptionalFeature -Online -FeatureName $FeatureName -NoRestart -All -ErrorAction Stop | Out-Null
+    } catch {
+        Write-Host "Falling back to DISM to enable $Description..." -ForegroundColor Yellow
+        & dism.exe /online /enable-feature /featurename:$FeatureName /all /norestart | Out-Null
+    }
     return $true
 }
 
@@ -172,7 +188,7 @@ unqualified-search-registries = ["docker.io", "quay.io", "ghcr.io"]
 prefix = "docker.io"
 location = "docker.io"
 EOF
-'
+'@
 
     try {
         & wsl.exe -d $DistroName -- bash -lc $script
