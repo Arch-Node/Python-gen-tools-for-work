@@ -1,0 +1,1699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PL/SQL AI Analysis System</title>
+
+<style>
+body {
+  margin: 0;
+  font-family: Segoe UI, Arial, sans-serif;
+  display: flex;
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: #1f2937;
+  color: white;
+  height: 100vh;
+  position: fixed;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+}
+
+.sidebar a {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.sidebar a:hover {
+  color: white;
+  background: #1a335c;
+}
+
+.step-header {
+  padding: 12px 16px;
+  background: #e5e7eb;
+  border-left: 6px solid #3b82f6;
+  margin-bottom: 15px;
+}
+
+pre {
+  background: #111827;
+  color: #e5e7eb;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+pre code {
+  color: #93c5fd;
+}
+
+.main {
+  margin-left: 300px;
+  padding: 40px 40px 40px 60px; /* added extra left padding */
+  max-width: 900px;
+}
+
+h1, h2, h3 {
+  color: #1f2937;
+}
+
+pre {
+  background: #0d0d0d;
+  padding: 15px;
+  overflow-x: auto;
+  border-radius: 6px;
+}
+
+code {
+  background: #e5e7eb;
+  padding: 2px 4px;
+}
+
+section {
+  margin-bottom: 50px;
+}
+
+hr {
+  margin: 40px 0;
+}
+</style>
+</head>
+
+<body>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <h2>Documentation</h2>
+
+  <a href="#overview">Overview</a>
+  <a href="#architecture">Architecture</a>
+
+  <h2>Steps</h2>
+  <a href="#step1">Step 1: Scanner</a>
+  <a href="#step2">Step 2: Parsing</a>
+  <a href="#step3">Step 3: Graph</a>
+  <a href="#step4">Step 4: Semantic (RAG)</a>
+  <a href="#step5">Step 5: Router</a>
+  <a href="#step6">Step 6: Evaluation</a>
+  <a href="#step7">Step 7: Self-Optimizing</a>
+
+</div>
+
+<!-- Main -->
+<div class="main">
+
+<!-- ============ OVERVIEW ============ -->
+<section id="overview">
+
+<div class="step-header">
+  <h1>PL/SQL AI Data Flow Analysis System</h1>
+</div>
+
+<p>
+This system analyzes large Oracle PL/SQL codebases using structured analysis instead of brute-force LLM processing.
+</p>
+
+<ul>
+  <li>Code scanning</li>
+  <li>Parsing</li>
+  <li>Knowledge graph</li>
+  <li>Vector search (RAG)</li>
+  <li>LLM orchestration</li>
+</ul>
+
+<h2>Problem</h2>
+
+<p>
+Enterprise logic is distributed across hundreds or thousands of files. A simple question like:
+</p>
+
+<blockquote><strong>"What happens when an account is closed?"</strong></blockquote>
+
+<p>
+…requires understanding tables, procedures, triggers, and documentation.
+</p>
+
+<p>
+Sending everything to an LLM is:
+</p>
+
+<ul>
+  <li>Expensive</li>
+  <li>Slow</li>
+  <li>Inefficient</li>
+</ul>
+
+</section>
+
+<!-- ============ ARCHITECTURE ============ -->
+<section id="architecture">
+<h2>Architecture</h2>
+
+<pre>
+Git Repository
+     ↓
+Code Scanner
+     ↓
+Parser
+     ↓
+Graph + Vector Database
+     ↓
+Local LLM Router
+     ↓
+Cloud Model
+     ↓
+Response
+</pre>
+
+<p>
+The system reduces token usage by sending only relevant context to the cloud model.
+</p>
+
+</section>
+
+<hr>
+
+<!-- ============ STEP 1 ============ -->
+<section id="step1">
+
+<h1>Step 1: Code Scanner</h1>
+
+<p>The scanner builds an inventory of everything in the repository.</p>
+
+<h2>Goal</h2>
+
+<p>Transform raw files into structured metadata:</p>
+
+<pre>
+{
+  "file": "customer_pkg.sql",
+  "type": "package",
+  "name": "CUSTOMER_PKG"
+}
+</pre>
+
+<h2>Why It Exists</h2>
+
+<ul>
+  <li>Reduces search space</li>
+  <li>Avoids sending entire repo to AI</li>
+  <li>Creates a reliable inventory</li>
+</ul>
+
+<h2>Key Stages</h2>
+
+<h3>1. Repository Discovery</h3>
+<ul>
+  <li>GitHub, Azure DevOps, Bitbucket</li>
+  <li>Collect .sql, .pkb, .pks, .pls</li>
+</ul>
+
+<h3>2. File Classification</h3>
+<ul>
+  <li>Procedure</li>
+  <li>View</li>
+  <li>Package</li>
+  <li>Trigger</li>
+</ul>
+
+<h3>3. Extract Object Names</h3>
+
+<pre>
+CREATE PROCEDURE UPDATE_CUSTOMER
+→ UPDATE_CUSTOMER
+</pre>
+
+<h3>4. Metadata Capture</h3>
+
+<ul>
+  <li>Size</li>
+  <li>Line count</li>
+  <li>Last modified</li>
+</ul>
+
+<h3>5. Git Metadata</h3>
+
+<pre>
+{
+  "author": "jdoe",
+  "commit": "abc123"
+}
+</pre>
+
+<h3>6. Documentation Linking</h3>
+
+<ul>
+  <li>Associate .md files with code</li>
+</ul>
+
+<h3>7. Chunking</h3>
+
+<ul>
+  <li>Break large packages into procedures</li>
+</ul>
+
+<h3>8. Object Registry</h3>
+
+<p>Central index of all objects:</p>
+
+<pre>
+CUSTOMER_PKG → /packages/customer_pkg.pkb
+</pre>
+
+<h2>Outcome</h2>
+
+<ul>
+  <li>Know what exists</li>
+  <li>Know where it lives</li>
+  <li>Know ownership and size</li>
+</ul>
+
+<p>
+At this stage, the system is an <strong>inventory</strong>, not an understanding system.
+</p>
+
+</section>
+
+<hr>
+
+<!-- ============ STEP 2 ============ -->
+<section id="step2">
+
+<div class="step-header">
+  <h1>Step 2: Parsing & Relationship Extraction</h1>
+</div>
+
+<p>
+Step 2 turns the system from a catalog into an understanding engine.
+</p>
+
+<h2>Goal</h2>
+
+<p>Convert code into structured relationships:</p>
+
+<pre>
+UPDATE CUSTOMER
+CALL send_notification;
+</pre>
+
+<p>Becomes:</p>
+
+<pre>
+{
+  "object": "UPDATE_CUSTOMER",
+  "writes": ["CUSTOMER"],
+  "calls": ["SEND_NOTIFICATION"]
+}
+</pre>
+
+<h2>Why It Matters</h2>
+
+<p>
+Instead of searching text, you can ask structured questions:
+</p>
+
+<ul>
+  <li>What updates CUSTOMER?</li>
+  <li>What reads from CUSTOMER?</li>
+  <li>What calls this procedure?</li>
+</ul>
+
+<h2>Key Stages</h2>
+
+<h3>1. AST (Abstract Syntax Tree)</h3>
+
+<p>Transforms code into structured meaning:</p>
+
+<pre>
+SELECT * FROM CUSTOMER
+→ { "operation": "select", "table": "CUSTOMER" }
+</pre>
+
+<h3>2. Read Relationships</h3>
+
+<pre>
+READS → CUSTOMER
+</pre>
+
+<h3>3. Write Relationships</h3>
+
+<pre>
+WRITES → CUSTOMER
+</pre>
+
+<h3>4. Procedure Calls</h3>
+
+<pre>
+CALLS → SEND_NOTIFICATION
+</pre>
+
+<h3>5. Package Structure</h3>
+
+<ul>
+  <li>Package → contains procedures</li>
+</ul>
+
+<h3>6. View Dependencies</h3>
+
+<pre>
+VIEW → DEPENDS_ON → TABLE
+</pre>
+
+<h3>7. Trigger Analysis</h3>
+
+<pre>
+TABLE → FIRES → TRIGGER
+</pre>
+
+<h3>8. Job Execution</h3>
+
+<pre>
+JOB → EXECUTES → PROCEDURE
+</pre>
+
+<h2>Output Structure</h2>
+
+<pre>
+Source           Relationship   Target
+UPDATE_CUSTOMER  WRITES         CUSTOMER
+UPDATE_CUSTOMER  CALLS          SEND_NOTIFICATION
+</pre>
+
+<h2>Outcome</h2>
+
+<ul>
+  <li>Understand data flow</li>
+  <li>Understand dependencies</li>
+  <li>Enable lineage analysis</li>
+</ul>
+
+<p>
+This structured metadata becomes the foundation for the knowledge graph (Step 3).
+</p>
+
+</section>
+
+<hr>
+
+<!-- ============ STEP 3 ============ -->
+<section id="step3">
+
+<div class="step-header">
+<h1>Step 3: Knowledge Graph</h1>
+</div>
+
+<p>
+Step 3 converts relationships into a navigable graph that enables impact analysis and lineage tracking.
+</p>
+
+<h2>Goal</h2>
+
+<p>Transform isolated relationships into connected data flow:</p>
+
+<pre>
+UPDATE_CUSTOMER → WRITES → CUSTOMER
+CUSTOMER_REPORT → READS → CUSTOMER
+</pre>
+
+<p>Becomes a connected graph:</p>
+
+<pre>
+UPDATE_CUSTOMER
+    ↓
+  CUSTOMER
+    ↑
+CUSTOMER_REPORT
+</pre>
+
+<h2>Why a Graph?</h2>
+
+<p>
+Traditional databases answer simple lookups well, but struggle with deep relationship traversal.
+</p>
+
+<p>
+Graphs allow questions like:
+</p>
+
+<ul>
+  <li>What depends on CUSTOMER?</li>
+  <li>What breaks if I change this?</li>
+  <li>What is downstream from this table?</li>
+</ul>
+
+<h2>Key Concepts</h2>
+
+<h3>Nodes (Entities)</h3>
+
+<ul>
+  <li>Table</li>
+  <li>View</li>
+  <li>Procedure</li>
+  <li>Function</li>
+  <li>Package</li>
+  <li>Trigger</li>
+  <li>Job</li>
+</ul>
+
+<p>Example:</p>
+
+<pre>
+(CUSTOMER:Table)
+(UPDATE_CUSTOMER:Procedure)
+</pre>
+
+<h3>Relationships (Edges)</h3>
+
+<ul>
+  <li>READS</li>
+  <li>WRITES</li>
+  <li>CALLS</li>
+  <li>DEPENDS_ON</li>
+  <li>EXECUTES</li>
+  <li>FIRES</li>
+</ul>
+
+<p>Example:</p>
+
+<pre>
+UPDATE_CUSTOMER → WRITES → CUSTOMER
+</pre>
+
+<h2>Graph Construction</h2>
+
+<h3>1. Load Nodes</h3>
+
+<p>Create a node for every object discovered in Step 2.</p>
+
+<h3>2. Load Relationships</h3>
+
+<p>Connect nodes using extracted relationships:</p>
+
+<pre>
+UPDATE_CUSTOMER → WRITES → CUSTOMER
+</pre>
+
+<h3>3. Build Call Chains</h3>
+
+<pre>
+PROC_A → PROC_B → PROC_C
+</pre>
+
+<p>Now you can answer:</p>
+
+<ul>
+  <li>What runs when PROC_A is executed?</li>
+</ul>
+
+<h3>4. Build Data Flow</h3>
+
+<pre>
+CUSTOMER → CUSTOMER_VIEW → REPORT
+</pre>
+
+<h3>5. Multi-Hop Traversal</h3>
+
+<p>
+The system can follow chains across multiple levels:
+</p>
+
+<pre>
+CUSTOMER → VIEW → PROC → TABLE → REPORT
+</pre>
+
+<h2>Capabilities</h2>
+
+<h3>Impact Analysis</h3>
+
+<p>Question:</p>
+<blockquote>What breaks if CUSTOMER changes?</blockquote>
+
+<p>Result:</p>
+
+<ul>
+  <li>Dependent views</li>
+  <li>Procedures</li>
+  <li>Reports</li>
+</ul>
+
+<h3>Lineage Analysis</h3>
+
+<p>Trace data flow end-to-end:</p>
+
+<pre>
+ACCOUNT → BALANCE_VIEW → CALCULATION → REPORT
+</pre>
+
+<h3>Dependency Queries</h3>
+
+<ul>
+  <li>What writes to this table?</li>
+  <li>What reads from it?</li>
+  <li>What calls this procedure?</li>
+</ul>
+
+<h3>Ownership Mapping</h3>
+
+<p>Using metadata from Step 1:</p>
+
+<ul>
+  <li>Attach owners to nodes</li>
+  <li>Identify responsible teams</li>
+</ul>
+
+<h2>Example Query</h2>
+
+<p><strong>Find everything impacted by CUSTOMER:</strong></p>
+
+<pre>
+CUSTOMER
+  ↓
+VIEW_A
+  ↓
+PROC_B
+  ↓
+REPORT_C
+</pre>
+
+<h2>Why This Reduces LLM Cost</h2>
+
+<p>
+Without the graph:
+</p>
+<ul>
+  <li>LLM searches entire repository</li>
+</ul>
+
+<p>
+With the graph:
+</p>
+<ul>
+  <li>Graph finds relevant objects</li>
+  <li>LLM explains them</li>
+</ul>
+
+<p>
+This drastically reduces token usage and improves accuracy.
+</p>
+
+<h2>Outcome</h2>
+
+<ul>
+  <li>Impact analysis</li>
+  <li>Dependency tracking</li>
+  <li>Data lineage</li>
+  <li>Multi-hop traversal</li>
+</ul>
+
+<p>
+At this stage, the system understands <strong>relationships</strong> and <strong>data flow</strong>.
+</p>
+
+</section>
+
+<hr>
+
+<!-- ============ STEP 4 ============ -->
+<section id="step4">
+
+    <div class="step-header">
+<h1>Step 4: Semantic Layer (Embeddings + Vector Database)</h1>
+</div>
+
+<p>
+Step 4 adds meaning-based search to the system.  
+While the graph understands relationships, this layer understands <strong>intent and concepts</strong>.
+</p>
+
+<h2>Goal</h2>
+
+<p>Answer questions like:</p>
+
+<blockquote><strong>"Where is customer onboarding handled?"</strong></blockquote>
+
+<p>
+Even when those exact words do not appear in the code.
+</p>
+
+<h2>Why the Graph Isn’t Enough</h2>
+
+<p>
+The graph can answer:
+</p>
+
+<ul>
+  <li>What depends on CUSTOMER?</li>
+  <li>What calls UPDATE_CUSTOMER?</li>
+</ul>
+
+<p>
+But it cannot answer:
+</p>
+
+<ul>
+  <li>Where is onboarding logic?</li>
+  <li>Find code related to failed payments</li>
+</ul>
+
+<p>
+Because it only understands structure — not meaning.
+</p>
+
+<h2>Core Concept: Embeddings</h2>
+
+<p>
+Text is converted into vectors (numbers representing meaning):
+</p>
+
+<pre>
+"Customer onboarding"
+↓
+[0.12, 0.93, 0.41, ...]
+</pre>
+
+<p>
+Similar meanings produce similar vectors, allowing semantic search.
+</p>
+
+<h2>Architecture Update</h2>
+
+<pre>
+Repository
+  ↓
+Scanner
+  ↓
+Parser
+  ↓
+ ├── Graph (relationships)
+ └── Vector DB (meaning)
+</pre>
+
+<h2>Key Stages</h2>
+
+<h3>1. Chunking (From Step 1)</h3>
+
+<p>Do not embed entire files.</p>
+
+<ul>
+  <li>CUSTOMER_PKG.GET_CUSTOMER</li>
+  <li>CUSTOMER_PKG.UPDATE_CUSTOMER</li>
+</ul>
+
+<h3>2. Semantic Summaries</h3>
+
+<p>Instead of raw code, generate meaningful descriptions:</p>
+
+<pre>
+Procedure UPDATE_CUSTOMER
+- Updates customer status
+- Writes audit history
+- Sends notifications
+</pre>
+
+<h3>3. Generate Embeddings</h3>
+
+<p>Convert summaries into vectors:</p>
+
+<pre>
+[0.234, 0.882, 0.121, ...]
+</pre>
+
+<h3>4. Store in Vector Database</h3>
+
+<pre>
+{
+  "object": "UPDATE_CUSTOMER",
+  "embedding": [...],
+  "summary": "Updates status and sends notifications"
+}
+</pre>
+
+<h3>5. Semantic Search</h3>
+
+<p>Example query:</p>
+
+<blockquote>How is customer onboarding handled?</blockquote>
+
+<p>Returns:</p>
+
+<ul>
+  <li>CUSTOMER_SETUP_PKG</li>
+  <li>ACCOUNT_CREATION_PROC</li>
+  <li>Onboarding documentation</li>
+</ul>
+
+<h2>Hybrid Retrieval (Graph + Vector)</h2>
+
+<p>
+The most powerful approach combines both layers:
+</p>
+
+<ul>
+  <li><strong>Graph</strong> → finds dependencies</li>
+  <li><strong>Vector</strong> → finds meaning</li>
+</ul>
+
+<p>Example:</p>
+
+<pre>
+Question: Explain balance calculations
+
+Vector Search →
+  BALANCE_PACKAGE
+  Balance Docs
+
+Graph Expansion →
+  ACCOUNT → BALANCE_VIEW → REPORT
+
+Combined context → Sent to LLM
+</pre>
+
+<h2>Documentation Embeddings</h2>
+
+<p>Also index:</p>
+
+<ul>
+  <li>README files</li>
+  <li>Business rules</li>
+  <li>Wiki pages</li>
+</ul>
+
+<p>
+These often provide better explanations than code.
+</p>
+
+<h2>Example Capability</h2>
+
+<p>Query:</p>
+
+<blockquote>What code handles failed payments?</blockquote>
+
+<p>Vector search finds:</p>
+
+<ul>
+  <li>PAYMENT_RETRY_PROC</li>
+  <li>PAYMENT_EXCEPTION_PKG</li>
+</ul>
+
+<p>Graph expands dependencies:</p>
+
+<pre>
+PAYMENT_RETRY_PROC → NOTIFICATION_SERVICE
+</pre>
+
+<h2>Why This Reduces Tokens</h2>
+
+<p>
+Without RAG:
+</p>
+
+<ul>
+  <li>Send entire repository to LLM (~100k+ tokens)</li>
+</ul>
+
+<p>
+With RAG:
+</p>
+
+<ul>
+  <li>Send only 3–5 relevant objects (~2k–5k tokens)</li>
+</ul>
+
+<h2>Outcome</h2>
+
+<ul>
+  <li>Search by meaning, not just names</li>
+  <li>Retrieve relevant code automatically</li>
+  <li>Combine with graph for full understanding</li>
+  <li>Significantly reduce LLM cost</li>
+</ul>
+
+<p>
+At this stage, the system understands both:
+</p>
+
+<ul>
+  <li><strong>Relationships</strong> (Graph)</li>
+  <li><strong>Meaning</strong> (Vector search)</li>
+</ul>
+
+</section>
+
+<hr>
+
+<!-- ============ STEP 5 ============ -->
+<section id="step5">
+
+<div class="step-header">
+<h1>Step 5: Local Orchestration Layer (LLM Router)</h1>
+</div>
+<p>
+Step 5 is where the system becomes intelligent about <strong>what to retrieve</strong>, 
+<strong>how much context to send</strong>, and <strong>whether a cloud model is needed at all</strong>.
+</p>
+
+<h2>Goal</h2>
+
+<p>
+Decide what information is necessary to answer a question — and avoid unnecessary LLM usage.
+</p>
+
+<h2>Before vs After</h2>
+
+<h3>Before Step 5</h3>
+
+<pre>
+User Question
+  ↓
+Graph + Vector Retrieval
+  ↓
+Cloud Model (always used)
+</pre>
+
+<h3>After Step 5</h3>
+
+<pre>
+User Question
+  ↓
+Local LLM Router
+  ↓
+Decision:
+  - Graph?
+  - Vector?
+  - Both?
+  - Enough locally?
+  - Need cloud?
+  ↓
+Compressed Context
+  ↓
+Cloud Model (only if needed)
+</pre>
+
+<h2>Why This Matters</h2>
+
+<ul>
+  <li>Reduces cost</li>
+  <li>Reduces latency</li>
+  <li>Avoids unnecessary cloud calls</li>
+  <li>Optimizes token usage</li>
+</ul>
+
+<h2>Core Concept: The Router</h2>
+
+<p>
+The local model doesn’t answer the question.  
+It decides how to answer it.
+</p>
+
+<pre>
+{
+  "intent": "data_lineage",
+  "use_graph": true,
+  "use_vector": true,
+  "use_cloud": false,
+  "context_budget": 1200
+}
+</pre>
+
+<h2>Key Stages</h2>
+
+<h3>1. Intent Classification</h3>
+
+<p>Understand what the user is asking:</p>
+
+<pre>
+"What updates CUSTOMER?"
+→ impact analysis
+
+"Explain balance calculations"
+→ complex reasoning
+</pre>
+
+<h3>2. Retrieval Strategy Selection</h3>
+
+<p>Choose which systems to use:</p>
+
+<ul>
+  <li><strong>Graph only</strong> → dependency queries</li>
+  <li><strong>Vector only</strong> → semantic search</li>
+  <li><strong>Hybrid</strong> → complex questions</li>
+</ul>
+
+<h3>3. Context Budgeting</h3>
+
+<p>Limit how much data is sent:</p>
+
+<pre>
+Total Budget: 1500 tokens
+- Graph: 300
+- Vector: 800
+- Summaries: 400
+</pre>
+
+<p>
+Prevents sending large amounts of unnecessary data.
+</p>
+
+<h3>4. Context Compression</h3>
+
+<p>Reduce raw output into structured summaries:</p>
+
+<pre>
+Before:
+CUSTOMER_TABLE
+UPDATE_CUSTOMER
+CUSTOMER_VIEW
+
+After:
+{
+  "entity": "CUSTOMER",
+  "writes": ["UPDATE_CUSTOMER"],
+  "reads": ["CUSTOMER_VIEW"]
+}
+</pre>
+
+<h3>5. Merge Graph + Vector Results</h3>
+
+<p>
+Combine structure and meaning into a clean context package:
+</p>
+
+<pre>
+{
+  "procedure": "UPDATE_CUSTOMER",
+  "table": "CUSTOMER",
+  "summary": "Handles onboarding and status updates",
+  "dependencies": ["SEND_NOTIFICATION"]
+}
+</pre>
+
+<h3>6. Cloud Decision</h3>
+
+<p>Decide if a cloud LLM is needed:</p>
+
+<ul>
+  <li><strong>Not needed:</strong> simple queries</li>
+  <li><strong>Needed:</strong> reasoning + explanations</li>
+</ul>
+
+<p>Examples (No Cloud):</p>
+
+<ul>
+  <li>What tables does this procedure write?</li>
+  <li>What calls this function?</li>
+</ul>
+
+<p>Examples (Cloud Needed):</p>
+
+<ul>
+  <li>Explain the system architecture</li>
+  <li>Why is this logic inconsistent?</li>
+</ul>
+
+<h3>7. Prompt Construction</h3>
+
+<p>Build a compact prompt instead of sending full code:</p>
+
+<pre>
+User Question:
+How is onboarding handled?
+
+Graph Context:
+- UPDATE_CUSTOMER → CUSTOMER
+
+Vector Context:
+- Onboarding logic documentation
+
+Summary:
+- Calls SEND_NOTIFICATION
+</pre>
+
+<h3>8. Feedback Tracking</h3>
+
+<p>Track performance for optimization:</p>
+
+<pre>
+{
+  "model_used": "cloud",
+  "tokens": 2400,
+  "could_be_local": true
+}
+</pre>
+
+<h3>9. Parallel Retrieval</h3>
+
+<p>Run graph and vector queries simultaneously:</p>
+
+<pre>
+Graph Query ┐
+            ├ → Merge → LLM
+Vector Query┘
+</pre>
+
+<h2>Capabilities</h2>
+
+<ul>
+  <li>Intent-aware query handling</li>
+  <li>Smart retrieval selection</li>
+  <li>Token optimization</li>
+  <li>Avoid unnecessary LLM calls</li>
+  <li>Automatic context compression</li>
+</ul>
+
+<h2>Why This Is a Turning Point</h2>
+
+<p>
+Before Step 5:
+</p>
+<ul>
+  <li>System retrieves data</li>
+  <li>Sends everything to LLM</li>
+</ul>
+
+<p>
+After Step 5:
+</p>
+<ul>
+  <li>System decides what matters</li>
+  <li>Sends only relevant context</li>
+  <li>Sometimes skips LLM entirely</li>
+</ul>
+
+<h2>Outcome</h2>
+
+<ul>
+  <li>Major cost reduction</li>
+  <li>Faster responses</li>
+  <li>Better accuracy</li>
+  <li>Scalable architecture</li>
+</ul>
+
+<p>
+At this stage, the system becomes a true <strong>AI orchestration layer</strong>, 
+not just a retrieval pipeline.
+</p>
+
+</section>
+
+<hr>
+
+<!-- ============ STEP 6 ============ -->
+<section id="step6">
+
+<div class="step-header">
+<h1>Step 6: Evaluation Layer (Telemetry + Model Benchmarking)</h1>
+</div>
+
+<p>
+Step 6 transforms the system from an architecture into a <strong>measurable engineering platform</strong>.
+Every query becomes data that can be analyzed and optimized.
+</p>
+
+<h2>Goal</h2>
+
+<p>
+Measure and understand:
+</p>
+
+<ul>
+  <li>Cost (tokens, dollars)</li>
+  <li>Accuracy</li>
+  <li>Latency</li>
+  <li>Model performance</li>
+</ul>
+
+<p>
+So instead of guessing:
+</p>
+
+<blockquote>"This model feels better"</blockquote>
+
+<p>
+You know:
+</p>
+
+<blockquote>"Model A is more accurate but 2x more expensive than Model B"</blockquote>
+
+<h2>Architecture</h2>
+
+<pre>
+User Query
+  ↓
+Step 5 Router
+  ↓
+Graph / Vector / Cloud
+  ↓
+Response
+  ↓
+Telemetry Collector
+  ↓
+Evaluation Engine
+  ↓
+Metrics Database
+</pre>
+
+<h2>Key Stages</h2>
+
+<h3>1. Log Every Interaction</h3>
+
+<p>Each request becomes structured data:</p>
+
+<pre>
+{
+  "query": "How does onboarding work?",
+  "intent": "data_lineage",
+  "retrieval_used": ["graph", "vector"],
+  "model_used": "cloud",
+  "tokens_input": 3200,
+  "tokens_output": 800,
+  "latency_ms": 4200,
+  "cost_usd": 0.018,
+  "accepted": true
+}
+</pre>
+
+<h3>2. Model Performance Tracking</h3>
+
+<p>Measure performance per task type:</p>
+
+<pre>
+Task Type            Best Model
+---------------------------------------
+Graph Queries        Graph Only
+PL/SQL Explanation   Cloud Model
+Simple Retrieval     Local Model
+</pre>
+
+<h3>3. Compare Models</h3>
+
+<p>
+Run the same query across multiple models and evaluate results:
+</p>
+
+<pre>
+Model A → Accuracy: 9.1
+Model B → Accuracy: 9.4
+Model C → Accuracy: 8.7
+</pre>
+
+<h3>4. Scoring System</h3>
+
+<p>Evaluate outputs using defined metrics:</p>
+
+<ul>
+  <li>Correctness</li>
+  <li>Completeness</li>
+  <li>Clarity</li>
+  <li>Dependency Accuracy</li>
+</ul>
+
+<pre>
+{
+  "model": "Model A",
+  "correctness": 9.5,
+  "completeness": 9.0,
+  "overall": 9.2
+}
+</pre>
+
+<h3>5. Token Efficiency</h3>
+
+<p>Track cost vs quality:</p>
+
+<pre>
+Model     Tokens   Score
+------------------------
+A         4200     9.1
+B         1200     7.8
+</pre>
+
+<p>
+This helps determine the most efficient model.
+</p>
+
+<h3>6. Router Effectiveness</h3>
+
+<p>Evaluate if routing decisions were optimal:</p>
+
+<pre>
+{
+  "router_decision": "cloud",
+  "better_option": "graph_only",
+  "cost_wasted": 0.012
+}
+</pre>
+
+<h3>7. Gold Dataset</h3>
+
+<p>Build a test suite of known questions:</p>
+
+<ul>
+  <li>What updates CUSTOMER.STATUS?</li>
+  <li>How does onboarding work?</li>
+  <li>Explain balance calculations</li>
+</ul>
+
+<p>
+Use this to validate system accuracy over time.
+</p>
+
+<h3>8. A/B Testing</h3>
+
+<p>Split traffic between models:</p>
+
+<pre>
+50% → Model A
+50% → Model B
+</pre>
+
+<p>
+Measure which performs better.
+</p>
+
+<h3>9. Detect Overuse</h3>
+
+<p>Identify unnecessary usage:</p>
+
+<ul>
+  <li>Too many cloud calls</li>
+  <li>Unneeded vector searches</li>
+</ul>
+
+<p>Example insight:</p>
+
+<pre>
+70% queries → graph only sufficient
+</pre>
+
+<h3>10. Cost Attribution</h3>
+
+<p>Break down cost by component:</p>
+
+<pre>
+Graph Query:   $0.002
+Vector Search: $0.004
+Cloud LLM:     $0.120
+Total:         $0.126
+</pre>
+
+<h3>11. Model Specialization</h3>
+
+<p>Identify strengths:</p>
+
+<ul>
+  <li>Graph → best for dependencies</li>
+  <li>Cloud → best for reasoning</li>
+  <li>Local → best for routing</li>
+</ul>
+
+<h3>12. Continuous Improvement Loop</h3>
+
+<pre>
+Telemetry → Analysis → Optimization → Better Routing → Lower Cost
+</pre>
+
+<h2>Capabilities</h2>
+
+<ul>
+  <li>Data-driven model selection</li>
+  <li>Token cost optimization</li>
+  <li>Router performance improvement</li>
+  <li>Continuous system evaluation</li>
+</ul>
+
+<h2>Why This Matters</h2>
+
+<p>
+Without Step 6:
+</p>
+<ul>
+  <li>Decisions are based on intuition</li>
+</ul>
+
+<p>
+With Step 6:
+</p>
+<ul>
+  <li>Decisions are based on data</li>
+  <li>Costs are measurable</li>
+  <li>Performance is provable</li>
+</ul>
+
+<h2>Outcome</h2>
+
+<ul>
+  <li>Fully measurable system</li>
+  <li>Optimized model usage</li>
+  <li>Reduced costs</li>
+  <li>Improved accuracy over time</li>
+</ul>
+
+<p>
+At this stage, the system becomes an <strong>AI observability platform</strong>,
+not just an AI pipeline.
+</p>
+
+</section>
+
+<hr>
+
+<!-- ============ STEP 7 ============ -->
+<section id="step7">
+
+<div class="step-header">
+<h1>Step 7: Self-Optimizing AI System (Closed Loop Learning)</h1>
+</div>
+
+<p>
+Step 7 transforms the system into a <strong>self-improving platform</strong> that continuously learns 
+how to reduce cost, improve accuracy, and optimize routing decisions automatically.
+</p>
+
+<h2>Goal</h2>
+
+<p>
+Move from:
+</p>
+
+<ul>
+  <li>Manual tuning</li>
+  <li>Static routing rules</li>
+  <li>Fixed prompts</li>
+</ul>
+
+<p>
+To:
+</p>
+
+<ul>
+  <li>Automatic optimization</li>
+  <li>Adaptive routing</li>
+  <li>Self-improving prompts and strategies</li>
+</ul>
+
+<h2>Core Concept</h2>
+
+<p>
+Instead of engineers adjusting the system:
+</p>
+
+<pre>
+Engineer → change rules → system improves
+</pre>
+
+<p>
+The system learns on its own:
+</p>
+
+<pre>
+System observes → learns → updates itself → improves
+</pre>
+
+<h2>Architecture</h2>
+
+<pre>
+User Query
+  ↓
+Step 5 Router
+  ↓
+Graph / Vector / Cloud
+  ↓
+Response
+  ↓
+Telemetry (Step 6)
+  ↓
+Learning Engine (Step 7)
+  ↓
+Updated Routing + Prompts + Policies
+</pre>
+
+<h2>Key Stages</h2>
+
+<h3>1. Policy Learning</h3>
+
+<p>Each query becomes training data:</p>
+
+<pre>
+{
+  "query": "How does onboarding work?",
+  "router_decision": "cloud",
+  "better_option": "graph + vector",
+  "cost_wasted": 0.01
+}
+</pre>
+
+<p>
+The system learns which decisions were optimal.
+</p>
+
+<h3>2. Router Self-Tuning</h3>
+
+<p>
+The router evolves based on historical performance:
+</p>
+
+<pre>
+{
+  "intent": "impact_analysis",
+  "best_strategy": "graph_only",
+  "confidence": 0.85
+}
+</pre>
+
+<h3>3. Automatic Prompt Optimization</h3>
+
+<p>
+The system improves prompts over time:
+</p>
+
+<pre>
+Old Prompt:
+Explain this procedure
+
+Optimized Prompt:
+Focus on:
+- data flow
+- dependencies
+- side effects
+</pre>
+
+<h3>4. Dynamic Context Sizing</h3>
+
+<p>
+Context size adapts to query complexity:
+</p>
+
+<pre>
+Simple Query → 800 tokens
+Medium Query → 2000 tokens
+Complex Query → 6000 tokens
+</pre>
+
+<h3>5. Graph Expansion Learning</h3>
+
+<p>
+The system learns how far to traverse the graph:
+</p>
+
+<ul>
+  <li>Customer queries → 3 hops</li>
+  <li>Billing flows → 7 hops</li>
+</ul>
+
+<p>
+Reducing unnecessary data and tokens.
+</p>
+
+<h3>6. Retrieval Strategy Optimization</h3>
+
+<p>
+Determines when to use each layer:
+</p>
+
+<ul>
+  <li>Graph only</li>
+  <li>Vector only</li>
+  <li>Hybrid</li>
+  <li>Cached answer</li>
+</ul>
+
+<h3>7. Intelligent Caching</h3>
+
+<p>
+Store responses for repeated queries:
+</p>
+
+<pre>
+{
+  "query_signature": "hash123",
+  "answer": "...",
+  "valid_until": "code changes"
+}
+</pre>
+
+<p>
+Avoids repeated computation entirely.
+</p>
+
+<h3>8. Drift Detection</h3>
+
+<p>
+Detect when code changes invalidate knowledge:
+</p>
+
+<ul>
+  <li>Invalidate cache</li>
+  <li>Update graph</li>
+  <li>Re-evaluate strategies</li>
+</ul>
+
+<h3>9. Automatic Model Selection</h3>
+
+<p>
+Choose the best model dynamically:
+</p>
+
+<pre>
+{
+  "task": "lineage_analysis",
+  "best_model": "cloud",
+  "confidence": 0.91
+}
+</pre>
+
+<p>
+Or skip LLM entirely:
+</p>
+
+<pre>
+{
+  "task": "simple_query",
+  "best_model": "graph_only"
+}
+</pre>
+
+<h3>10. Feedback Integration</h3>
+
+<p>
+Learn from user behavior:
+</p>
+
+<pre>
+{
+  "accepted": false,
+  "issue": "missing_dependency"
+}
+</pre>
+
+<p>
+System adjusts future behavior accordingly.
+</p>
+
+<h3>11. Self-Generated Training Data</h3>
+
+<p>
+System creates its own improvement dataset:
+</p>
+
+<pre>
+Query → Retrieval → Response → Evaluation → Improved Answer
+</pre>
+
+<h3>12. Continuous Optimization Loop</h3>
+
+<pre>
+Observe
+  ↓
+Evaluate
+  ↓
+Optimize
+  ↓
+Deploy changes
+  ↓
+Repeat
+</pre>
+
+<h2>Capabilities</h2>
+
+<ul>
+  <li>Self-optimizing routing decisions</li>
+  <li>Automatic prompt tuning</li>
+  <li>Adaptive context management</li>
+  <li>Dynamic model selection</li>
+  <li>Intelligent caching</li>
+</ul>
+
+<h2>Why This Matters</h2>
+
+<p>
+Before Step 7:
+</p>
+
+<ul>
+  <li>Engineers manually tune system</li>
+  <li>Improvements are slow</li>
+</ul>
+
+<p>
+After Step 7:
+</p>
+
+<ul>
+  <li>System improves automatically</li>
+  <li>Cost decreases over time</li>
+  <li>Accuracy increases continuously</li>
+</ul>
+
+<h2>Outcome</h2>
+
+<ul>
+  <li>Self-learning AI system</li>
+  <li>Continuously improving performance</li>
+  <li>Reduced operational overhead</li>
+  <li>Enterprise-grade optimization engine</li>
+</ul>
+
+<p>
+At this stage, the system is no longer just a pipeline.  
+It becomes a <strong>learning optimization platform for enterprise knowledge systems</strong>.
+</p>
+
+</section>
+
+</div>
+
+</body>
+</html>
+
+<script>
+const sections = document.querySelectorAll("section");
+const navLinks = document.querySelectorAll(".sidebar a");
+
+window.addEventListener("scroll", () => {
+  let current = "";
+  sections.forEach(section => {
+    const sectionTop = section.offsetTop;
+    if (scrollY >= sectionTop - 100) {
+      current = section.getAttribute("id");
+    }
+  });
+
+  navLinks.forEach(link => {
+    link.style.color = "#cbd5e1";
+    if (link.getAttribute("href") === "#" + current) {
+      link.style.color = "#ffffff";
+      link.style.fontWeight = "bold";
+    }
+  });
+});
+</script>

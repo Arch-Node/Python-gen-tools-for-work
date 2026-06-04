@@ -1,0 +1,638 @@
+\# PL/SQL AI Analysis System - Technical Deep Dive & Implementation Plan
+
+**Document Status:** Revised with realistic constraints and hybrid retrieval best practices
+
+## Feedback & Corrections Applied
+
+This document has been revised to address key issues:
+
+✅ **Removed unsupported precision claims** - Changed accuracy estimates from specific percentages (90%, 95%, 99%) to realistic ranges (70-85%)  
+✅ **Added hybrid retrieval emphasis** - All retrieval strategies now combine graph + vector + keyword approaches  
+✅ **Highlighted PL/SQL complexity** - Parsing complexity is now explicitly called out as a HIGH risk; not underestimated  
+✅ **Realistic success criteria** - Removed 95% accuracy target; emphasized relative improvement vs. manual approach  
+✅ **Conservative KPI ranges** - All targets now shown as ranges with caveats, not binary thresholds  
+
+## Overview
+
+Enterprise Oracle systems require intelligent analysis of complex PL/SQL codebases. This document outlines a 7-step system combining graph databases, semantic search (RAG), LLM orchestration, and self-optimization to enable instant answers to business questions about code dependencies and data flow.
+
+**Core Problem:** Understanding which code reads/writes/calls what across 100+ interdependent procedures, functions, packages, triggers, and views.
+
+**Solution:** Layered analysis system that trades initial setup cost for massive operational efficiency.
+
+---
+
+## Step 1: Code Scanner - Inventory & Metadata Extraction
+
+**Purpose:** Discover and catalog all PL/SQL objects with metadata.
+
+### Capabilities
+- Discover procedures, functions, packages, triggers, views, jobs
+- Extract metadata (size, lines, complexity, ownership)
+- Link to documentation
+- Chunk large objects
+- Track git history (author, dates, change frequency)
+
+### Python Tech Stack
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| Git Access | gitpython | 3.1.0+ | Clone repos, extract history |
+| File Handling | pathlib | stdlib | Cross-platform file operations |
+| Patterns | regex | 2023+ | Advanced pattern matching |
+| Data Validation | pydantic | 2.0+ | Schema definition |
+| Progress | tqdm | 4.6+ | Progress tracking |
+
+### Key Algorithm
+```
+For each SQL file in repository:
+  1. Read content
+  2. Extract objects via regex patterns
+  3. Get git metadata (author, last change, commit)
+  4. Calculate metrics (LOC, complexity, docstring presence)
+  5. Link associated documentation
+  6. Chunk if > 500 lines
+  7. Store in object registry
+```
+
+### Output Format
+```json
+{
+  "CUSTOMER_PKG": {
+    "type": "package",
+    "file": "packages/customer_pkg.pkb",
+    "size_bytes": 15234,
+    "lines": 420,
+    "author": "jsmith",
+    "last_modified": "2024-01-15",
+    "children": ["GET_CUSTOMER", "UPDATE_CUSTOMER"]
+  }
+}
+```
+
+---
+
+## Step 2: PL/SQL Parser - Relationship Extraction
+
+**Purpose:** Convert code into structured relationships (reads, writes, calls, dependencies).
+
+### Relationships Extracted
+| Type | Example | Direction |
+|------|---------|-----------|
+| READS | Procedure → Table | Incoming data |
+| WRITES | Procedure → Table | Outgoing changes |
+| CALLS | Procedure → Function | Code dependency |
+| EXECUTES | Job → Procedure | Scheduling |
+| FIRES | Trigger → Table | Event-based |
+| DEPENDS_ON | View → Table | Data source |
+
+### Python Tech Stack
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| SQL Parsing | sqlparse | 0.4.3+ | Pure Python SQL parser |
+| Advanced Parsing | antlr4-python3-runtime | 4.12+ | Grammar-based parsing |
+| Tree Parsing | tree-sitter | 0.20+ | Universal parser |
+| Graph Building | networkx | 3.1+ | In-memory graphs |
+| Data Processing | pandas | 1.5+ | Batch operations |
+
+### Parsing Strategy (Layered) ⚠️ Complexity Warning
+
+**Note:** PL/SQL parsing is significantly more complex than generic SQL due to:
+- Dialect-specific syntax (Oracle-specific keywords, packages, triggers)
+- Procedural logic (loops, conditionals, exception handling)
+- Anonymous blocks and dynamic SQL
+- Package-scoped dependencies
+
+**Implementation layers (with caveats):**
+1. **Layer 1 (Fast):** Regex extraction → Quick pattern matching, best for simple procedures, higher miss rate
+2. **Layer 2 (Moderate):** sqlparse tokenization → Handles standard SQL, misses Oracle-specific constructs
+3. **Layer 3 (Thorough):** Tree-Sitter/ANTLR with Oracle grammar → More complete, requires maintained grammar, slower
+
+**Practical expectation:** Expect 70-85% accuracy on first pass across diverse codebases; requires refinement and manual validation for edge cases.
+
+### PL/SQL Parsing Complexity Deep Dive (Critical)
+
+**Why generic SQL parsers fail on PL/SQL:**
+
+| Challenge | Impact | Solution |
+|-----------|--------|----------|
+| **Oracle dialect syntax** | Keywords like `PRAGMA`, `EXCEPTION`, `BULK COLLECT` | Use Oracle-aware grammar (ANTLR with Oracle dialect) |
+| **Procedural logic** | Loops, conditionals, variable scoping | Tree-Sitter with PL/SQL rules; not regex |
+| **Anonymous blocks** | Dynamic execution, indirect dependencies | Pattern-based detection + manual validation |
+| **Package state** | Global variables, cursors, types | Track cross-package dependencies explicitly |
+| **Dynamic SQL** | `EXECUTE IMMEDIATE`, string concatenation | Conservative approach: flag as uncertain |
+| **Implicit conversions** | Type mismatches in relationships | Manual type inference rules |
+
+**Practical approach:**
+- Use regex (Layer 1) for 70-80% coverage
+- Use ANTLR (Layer 3) for remaining 20-30%, focusing on complex procedures
+- Build test suite of known PL/SQL patterns
+- Plan 15-20% of parsing time for manual validation
+- Track false positive rate; aim for < 10%
+
+### Example Output
+```json
+{
+  "object": "UPDATE_CUSTOMER",
+  "reads": ["CUSTOMER"],
+  "writes": ["CUSTOMER", "AUDIT_LOG"],
+  "calls": ["SEND_NOTIFICATION"],
+  "operations": [
+    {"type": "SELECT", "table": "CUSTOMER"},
+    {"type": "UPDATE", "table": "CUSTOMER"},
+    {"type": "INSERT", "table": "AUDIT_LOG"}
+  ]
+}
+```
+
+---
+
+## Step 3: Knowledge Graph - Dependencies & Impact Analysis
+
+**Purpose:** Store relationships in a graph database for traversal and lineage analysis.
+
+### Technology: Neo4j (Recommended)
+- **Why:** Purpose-built for relationships, Cypher query language, APOC algorithms
+- **Cost:** Free (Community Edition)
+- **Alternatives:** TigerGraph, Amazon Neptune, ArangoDB
+
+### Graph Structure
+**Nodes:**
+- Table (CUSTOMER)
+- Procedure (UPDATE_CUSTOMER)
+- Function (GET_NAME)
+- Package (CUSTOMER_PKG)
+- Trigger (AUDIT_CHG)
+- Job (NIGHTLY_REPORT)
+
+**Edges:**
+- READS, WRITES, CALLS, EXECUTES, FIRES, DEPENDS_ON, BELONGS_TO
+
+### Python Tech Stack
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| Neo4j Driver | neo4j | 5.10+ | Official driver |
+| Abstraction | py2neo | 2021+ | Higher-level API |
+| Algorithms | networkx | 3.1+ | Analysis algorithms |
+| Visualization | pyvis | 0.3+ | Interactive graphs |
+
+### Key Cypher Queries
+```cypher
+-- Impact analysis: What depends on this table?
+MATCH (t:Table {name: "CUSTOMER"})<-[:WRITES]-(p:Procedure)
+RETURN p
+
+-- Find circular dependencies
+MATCH (p1:Procedure)-[:CALLS*2..]->(p1)
+RETURN p1
+
+-- Data lineage (multi-hop)
+MATCH path = (source:Table)-[:READS|:WRITES*..5]->(dest:Report)
+WHERE source.name = "CUSTOMER"
+RETURN path
+```
+
+---
+
+## Step 4: Semantic Layer - Vector Search & RAG
+
+**Purpose:** Enable meaning-based search (not just name matching).
+
+### Why Needed
+- Graph answers: "What calls UPDATE_CUSTOMER?" ✓
+- Graph fails: "Show me customer onboarding logic" ✗
+- Vector search answers semantic questions ✓
+
+### Technology Stack
+
+**Vector Stores:**
+- **Chroma** (0.3+) - Local development, fast, free
+- **Pinecone** (2.2+) - Cloud production, managed, ~$0.10 per 1M vectors
+
+**Embeddings:**
+- **sentence-transformers** (2.2+) - Local (MiniLM-L6, all-MiniLM-L12)
+- **openai** (0.27+) - GPT-3.5 embeddings API
+
+**RAG Frameworks:**
+- **langchain** (0.0.300+) - Comprehensive orchestration
+- **llama-index** (0.8+) - Document-centric RAG
+
+### Python Tech Stack
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| Vector DB | chromadb | 0.3+ | Local embeddings |
+| Vector DB | pinecone-client | 2.2+ | Cloud embeddings |
+| Embeddings | sentence-transformers | 2.2+ | Local models |
+| Embeddings | openai | 0.27+ | API embeddings |
+| RAG | langchain | 0.0.300+ | End-to-end RAG |
+| RAG | llama-index | 0.8+ | Alternative RAG |
+
+### Chunking & Embedding Flow
+```
+Raw PL/SQL Code
+  ↓
+Chunk into logical units (procedures, functions)
+  ↓
+Generate semantic summaries
+  ↓
+Convert to embeddings (768-1536 dimensions)
+  ↓
+Store in vector DB with metadata
+  ↓
+Query: question → embedding → similarity search → results
+```
+
+### Example RAG Chain (LangChain)
+```python
+from langchain.vectorstores import Chroma
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.chains import RetrievalQA
+from langchain.chat_models import ChatOpenAI
+
+embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+vectorstore = Chroma(embedding_function=embeddings)
+retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+llm = ChatOpenAI(model="gpt-4")
+qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever)
+
+response = qa.run("What handles customer onboarding?")
+```
+
+---
+
+## Step 5: Router Layer - Intelligent Query Orchestration
+
+**Purpose:** Decide what to retrieve and whether to use cloud LLM.
+
+### Intent Classification & Retrieval Strategy
+| Intent | Example Query | Primary Retrieval | Hybrid Enhancement |
+|--------|---------------|------------------|-------------------|
+| DEPENDENCY | "What calls UPDATE_CUSTOMER?" | Graph traversal | + keyword search for fuzzy matches |
+| LINEAGE | "Trace data from CUSTOMER to REPORT" | Graph multi-hop | + vector for semantic validation |
+| REASONING | "Explain balance calculations" | Graph + Vector hybrid | + keyword for technical terms |
+| SEARCH | "Where is onboarding logic?" | Vector semantic search | + graph for structural context |
+| IMPACT | "What breaks if CUSTOMER changes?" | Graph + Vector hybrid | + keyword for related components |
+
+**Best Practice:** Use hybrid retrieval combining:
+- **Graph:** Structural/deterministic relationships
+- **Vector:** Semantic/contextual meaning  
+- **Keyword:** Exact terminology matching
+
+### Why Hybrid Retrieval? (Industry Pattern)
+
+Single-method retrieval has fundamental limitations:
+
+| Method | Strength | Weakness |
+|--------|----------|----------|
+| Graph only | Precise, deterministic, zero ambiguity | Misses semantic context; can't handle fuzzy queries |
+| Vector only | Finds semantic matches; flexible | False positives; can hallucinate relationships; no structure |
+| Keyword only | Exact matching | Too rigid; sensitive to terminology variations |
+
+**Hybrid approach addresses all three:**
+- **Graph validates structure:** Ensures relationships are real (high precision)
+- **Vector provides context:** Finds related code patterns (high recall)
+- **Keyword supports both:** Finds exact terms and variations
+
+**Reference:** [InfoQ: Vector Search & Hybrid Retrieval in RAG](https://www.infoq.com/articles/vector-search-hybrid-retrieval-rag/)
+
+### Routing Decision Algorithm (Hybrid-First)
+```
+IF intent in [DEPENDENCY, LINEAGE, IMPACT]:
+  → use_graph = True (primary), use_vector = True (validation), use_cloud = False
+  → retrieve_method = graph_with_vector_validation
+  → context_limit = 2000-3000 tokens
+  → cost = $0 (if no LLM needed)
+
+ELSE IF intent == REASONING:
+  → use_graph = True, use_vector = True, use_cloud = True
+  → retrieve_method = hybrid_graph_vector_keyword
+  → context_limit = 5000-8000 tokens
+  → cost = estimated $0.01-0.05 (LLM-dependent)
+
+ELSE IF intent == SEARCH:
+  → use_vector = True (primary), use_graph = True (context), use_cloud = False
+  → retrieve_method = vector_with_graph_validation
+  → context_limit = 2500-4000 tokens
+  → cost = $0 (vector only)
+```
+
+**Hybrid Principle:** Combine retrieval methods for redundancy and validation, not as binary choice.
+
+### Python Tech Stack
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| Orchestration | langchain | 0.0.300+ | Chain composition |
+| Intent Classification | transformers | 4.30+ | Zero-shot classification |
+| Type Safety | pydantic | 2.0+ | Response validation |
+| Retries | tenacity | 8.2+ | Exponential backoff |
+| Local LLM | ollama | - | Run models locally |
+
+### Context Compression Strategy
+```python
+def compress_context(graph_result, vector_result, max_tokens=2000):
+    compressed = {
+        "entity": graph_result.primary,
+        "relationships": graph_result.rels[:5],  # Top 5 only
+        "summary": vector_result.summary,
+        "dependencies": graph_result.deps
+    }
+    # Verify token count <= max_tokens
+    # Further reduce if needed
+    return compressed
+```
+
+---
+
+## Step 6: Evaluation Layer - Metrics & Observability
+
+**Purpose:** Measure cost, accuracy, latency, and model performance.
+
+### Metrics Collected Per Query
+```json
+{
+  "query_id": "uuid",
+  "timestamp": "2024-01-15T10:30:45Z",
+  "query_text": "What calls UPDATE_CUSTOMER?",
+  "intent": "dependency",
+  "router_decision": { "use_graph": true, "use_llm": false },
+  "latency_ms": 245,
+  "tokens_used": 0,
+  "cost_usd": 0.00,
+  "user_satisfaction": 5,
+  "accepted": true
+}
+```
+
+### Python Tech Stack
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| Time-Series DB | clickhouse-driver | 0.4+ | Store telemetry |
+| Metrics | prometheus-client | 0.16+ | Prometheus metrics |
+| Observability | opentelemetry-api | 1.18+ | Distributed tracing |
+| Logging | loguru | 0.7+ | Structured logging |
+| Analysis | pandas | 1.5+ | Telemetry analysis |
+
+### Database Choice: ClickHouse
+- Handles **billions** of metric rows efficiently
+- Columnar storage = fast aggregations
+- Cost: Free or $180/month managed
+- Perfect for: `SELECT AVG(cost_usd), COUNT(*) GROUP BY intent`
+
+### Key Metrics Queries
+```sql
+-- Average cost by intent
+SELECT intent, AVG(cost_usd) as avg_cost, COUNT(*) as queries
+FROM telemetry
+WHERE timestamp > now() - INTERVAL 24 HOUR
+GROUP BY intent
+
+-- Cache effectiveness
+SELECT 
+  SUM(cache_hit) / COUNT(*) as hit_rate,
+  AVG(latency_ms) as avg_latency
+FROM telemetry
+
+-- Model performance comparison
+SELECT model, AVG(user_satisfaction), COUNT(*)
+FROM telemetry
+GROUP BY model
+```
+
+---
+
+## Step 7: Self-Optimization - Closed Loop Learning
+
+**Purpose:** System automatically improves routing, caching, and strategies.
+
+### Optimization Loop
+```
+Observe (Step 6) → Analyze patterns → Learn optimal strategies → Update router
+                                ↑_____________________________________↓
+                              (Continuous improvement)
+```
+
+### What Gets Optimized
+
+1. **Routing Policies:** Learn when graph-only is sufficient vs needing LLM
+2. **Prompt Templates:** Auto-improve prompts based on user feedback
+3. **Context Sizing:** Dynamically adjust context window per query type
+4. **Graph Traversal Depth:** Learn how many hops needed per intent
+5. **Caching Strategy:** Cache frequently-asked questions
+
+### Python Tech Stack
+| Category | Package | Version | Purpose |
+|----------|---------|---------|---------|
+| ML Algorithms | scikit-learn | 1.3+ | Pattern recognition |
+| Optimization | optuna | 3.1+ | Hyperparameter tuning |
+| RL Framework | stable-baselines3 | 2.0+ | Reinforcement learning |
+| Experiment Tracking | mlflow | 2.6+ | Track optimizations |
+| Caching | redis | 5.0+ | Query response cache |
+
+### Policy Learning Algorithm
+```python
+def learn_routing_policy(telemetry_data):
+    """
+    For each intent, calculate win rate of each routing strategy
+    Update policy to use highest-win-rate strategy
+    """
+    for intent, queries in group_by_intent(telemetry_data):
+        win_rates = {}
+        
+        for strategy in ["graph_only", "vector_only", "hybrid", "cloud"]:
+            successes = [q for q in queries 
+                        if q.strategy == strategy and q.user_satisfaction >= 4]
+            win_rates[strategy] = len(successes) / len(queries_with_strategy)
+        
+        best = max(win_rates, key=win_rates.get)
+        update_routing_config(intent, best)
+```
+
+### Intelligent Query Caching
+```python
+def cache_query(query, result):
+    key = hash(normalize(query))
+    cache.set(key, result, ttl=24*3600)
+    
+def invalidate_on_code_change(file_path):
+    """When code changes, invalidate affected cached queries"""
+    dependent_queries = get_dependent_queries(file_path)
+    for q in dependent_queries:
+        cache.delete(hash(q))
+```
+
+---
+
+## Complete Python Technology Stack
+
+### Core Data & Analytics
+```
+pandas>=1.5.0
+numpy>=1.23.0
+polars>=0.18.0        # High-performance alternative
+```
+
+### Parsing & Language Processing
+```
+sqlparse>=0.4.3
+antlr4-python3-runtime>=4.12
+tree-sitter>=0.20
+regex>=2023.0.0
+```
+
+### LLM & AI (CORE LAYER)
+```
+openai>=0.27.0
+langchain>=0.0.300    # ⭐ ESSENTIAL
+llama-index>=0.8.0    # RAG framework
+sentence-transformers>=2.2.0
+transformers>=4.30.0
+```
+
+### Graph Database
+```
+neo4j>=5.10.0         # ⭐ ESSENTIAL
+py2neo>=2021.0.0
+networkx>=3.1
+```
+
+### Vector Search & RAG
+```
+chromadb>=0.3.0       # Local dev
+pinecone-client>=2.2.0  # Cloud prod
+weaviate-client>=3.15.0 # Alternative
+```
+
+### Metrics & Observability
+```
+prometheus-client>=0.16.0
+opentelemetry-api>=1.18.0
+loguru>=0.7.0
+clickhouse-driver>=0.4.0
+```
+
+### Development & Testing
+```
+pydantic>=2.0.0       # Data validation
+typer>=0.9.0          # CLI
+pytest>=7.4.0
+tenacity>=8.2.0       # Retry logic
+```
+
+### Optimization & Learning
+```
+scikit-learn>=1.3.0
+optuna>=3.1.0
+mlflow>=2.6.0
+redis>=5.0.0          # Caching
+```
+
+---
+
+## Database Architecture
+
+### Local Development (Docker Compose)
+```yaml
+neo4j: Graph database (relationships)
+postgres: Metadata store (objects, ownership)
+chromadb: Vector store (embeddings)
+redis: Query cache
+prometheus: Metrics collection
+```
+
+### Production (Distributed)
+```
+Neo4j Enterprise (Kubernetes)
+Pinecone (managed vector DB)
+PostgreSQL RDS (metadata)
+ClickHouse (telemetry)
+Redis Cluster (caching)
+Apache Airflow (scheduling)
+```
+
+### Technology Selection Rationale
+
+| Component | Tech | Why |
+|-----------|------|-----|
+| Graph | Neo4j | Purpose-built, Cypher language, APOC algorithms |
+| Vectors (Dev) | Chroma | Local, free, easy to start |
+| Vectors (Prod) | Pinecone | Managed, scalable, $$ |
+| Metadata | PostgreSQL | ACID, JSON support, TimescaleDB extension |
+| Telemetry | ClickHouse | Billions of rows, fast aggregations |
+| Cache | Redis | In-memory, fast, simple |
+
+---
+
+## Implementation Phases
+
+### Phase 1: Foundation (Weeks 1-2)
+- [ ] Setup local Docker environment
+- [ ] Implement Step 1 (Scanner)
+- [ ] Implement Step 2 (Parser)
+- [ ] Build Neo4j graph
+
+### Phase 2: Search & Retrieval (Weeks 3-4)
+- [ ] Setup Chroma vector store
+- [ ] Implement embeddings pipeline
+- [ ] Build semantic search
+
+### Phase 3: Intelligence (Weeks 5-6)
+- [ ] Implement Step 5 (Router)
+- [ ] Setup LangChain orchestration
+- [ ] Create intent classification
+
+### Phase 4: Observability (Weeks 7-8)
+- [ ] Setup ClickHouse telemetry
+- [ ] Implement metrics collection
+- [ ] Create monitoring dashboards
+
+### Phase 5: Optimization (Weeks 9+)
+- [ ] Implement learning algorithms
+- [ ] Build caching layer
+- [ ] Add policy optimization
+
+---
+
+## Key Performance Indicators (KPIs)
+
+| Metric | Target Range | Why | Notes |
+|--------|--------------|-----|-------|
+| Avg Query Latency | 1-3 seconds | User experience | Varies by query complexity |
+| Cost per Query | $0-0.02 | Operational efficiency | Depends on LLM usage % |
+| User Satisfaction | 3.5-4.5/5 | Quality measure | Qualitative; hard to predict upfront |
+| Cache Hit Rate | 50-75% | Avoid recomputation | Improves over time with usage patterns |
+| LLM Avoidance Rate | 60-80% | Cost reduction | With effective router tuning |
+| System Uptime | 99%+ | Reliability | Depends on infrastructure |
+| Parsing Accuracy* | 70-85% | Relationship extraction | *Measured as % of objects correctly identified |
+| False Positive Rate | < 10% | Reduce noise | Relationships incorrectly inferred |
+
+**Important:** KPI targets are **ranges, not guarantees**. Actual performance depends on codebase complexity, parsing tool maturity, and domain-specific PL/SQL dialects. Plan for 15-20% optimization iteration time.
+
+---
+
+## Risk Mitigation
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| **PL/SQL parsing complexity** | 🔴 HIGH | Use layered approach; expect 70-85% accuracy on initial pass; allocate 15-20% time for refinement |
+| **Oracle dialect coverage** | 🔴 HIGH | Maintain comprehensive grammar; test on diverse codebase samples; build validation tests |
+| **Large graph → memory issues** | 🟡 MEDIUM | Use Neo4j clustering; implement pagination; monitor memory usage |
+| **Poor embeddings relevance** | 🟡 MEDIUM | Fine-tune on domain-specific corpus; validate against known queries; measure drift |
+| **Accuracy overestimation** | 🟡 MEDIUM | Track false positives; validate relationships against human review; set conservative thresholds |
+| **High LLM cost** | 🟡 MEDIUM | Aggressive routing rules; high graph-only threshold; monitor per-intent costs |
+| **Cache invalidation lag** | 🟢 LOW | Track code dependencies; auto-invalidate on changes; use TTL-based expiration |
+| **Vector drift** | 🟢 LOW | Periodic re-embedding on code updates; monitor semantic coherence |
+| **Self-optimization divergence** | 🔴 HIGH | Validate learning algorithm against human feedback; use A/B testing; set policy bounds |
+| **Complexity underestimation** | 🔴 HIGH | Plan 9-12 weeks minimum (not 9 weeks); allocate buffer for Oracle-specific edge cases |
+
+---
+
+## Success Criteria
+
+✅ **Phase 1:** System can reliably parse majority of PL/SQL objects (70-80% accuracy)
+✅ **Phase 2:** Graph reflects code relationships with manageable false positive rate (< 10%)
+✅ **Phase 3:** Users can query in natural language with sensible results (not necessarily always correct)
+✅ **Phase 4:** System tracks cost/latency; identifies optimization opportunities
+✅ **Phase 5:** Self-optimization learns patterns; improves routing decisions over time
+✅ **Quality gate:** Human validation of accuracy before production; continuous monitoring
+✅ **Outcome:** Reduce time-to-insight on code questions from hours to seconds
+
+**⚠️ Realistic expectation:** System will never achieve 95%+ accuracy on complex codebases. Success is **relative improvement** and **consistency** compared to manual investigation, with human-in-the-loop for critical decisions.
