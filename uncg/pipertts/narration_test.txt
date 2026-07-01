@@ -1,0 +1,249 @@
+JSON Workflow Plan: Python to Oracle Thick Client Connection
+
+Welcome to this detailed walkthrough of a JSON-based integration architecture that connects Python applications with Oracle Database using a thick client connection.
+
+In this narration, we'll review the overall architecture, discuss each phase of the workflow, examine how JSON data moves through the system, and explain the benefits and considerations of the design.
+
+Let's begin with the overall objective.
+
+The goal of this architecture is to create a reliable, maintainable, and auditable process for handling transfer articulation updates. The workflow starts with JSON data, processes that data in Python, sends it to Oracle through a thick client connection, parses the JSON in PL/SQL, and then performs insert or update operations against database tables.
+
+The design is intended to support flexibility, error handling, transaction safety, and future scalability.
+
+At a high level, the architecture consists of four major layers.
+
+The first layer is the JSON source.
+
+This source could be a JSON file, an API response, a generated payload from another application, or any structured JSON document. The source acts as the starting point for the workflow.
+
+The second layer is the Python application.
+
+The Python application is responsible for reading JSON data, validating it, converting it into a format suitable for Oracle processing, and managing database connectivity through an Oracle thick client.
+
+The third layer is the Oracle PL/SQL processing layer.
+
+Once the JSON payload reaches Oracle, PL/SQL procedures parse the JSON document, validate its contents, extract relevant fields, and determine whether records should be inserted or updated.
+
+The fourth layer is the database persistence layer.
+
+This layer contains holding tables, audit structures, target tables, and transaction management logic that ultimately updates the production data.
+
+Now let's examine Phase One, which focuses on the Python side.
+
+The first responsibility of Python is loading JSON data.
+
+Using Python's built-in JSON module, a file can be opened and parsed into a dictionary object. This gives the application a structured representation of the data that can be manipulated and validated before any database activity occurs.
+
+Once the JSON is loaded, the next step is validation.
+
+Validation is important because it prevents malformed or incomplete data from reaching Oracle.
+
+The design uses the jsonschema library to define an expected structure. The schema specifies required fields, supported operation types, and acceptable data types.
+
+For example, an operation may be required to contain an operation type and a SHRTATC object. Optional arrays such as attributes and comments may also be included.
+
+By validating the JSON before it reaches Oracle, many data quality issues can be identified early in the process.
+
+After validation succeeds, the Python application prepares the payload for Oracle.
+
+Because Oracle procedures accept character data rather than native Python dictionaries, the dictionary is converted into a JSON string using json.dumps.
+
+This JSON string becomes the payload that is transmitted to Oracle.
+
+Next, we move into Phase Two, which focuses on connectivity between Python and Oracle.
+
+The architecture assumes the existence of an OracleDB helper class that encapsulates thick client initialization, connection management, transaction handling, and procedure execution.
+
+The Oracle thick client provides full Oracle functionality and is especially useful in enterprise environments where advanced Oracle features are required.
+
+The application creates an OracleDB instance, establishes a connection, and then invokes a PL/SQL procedure.
+
+The procedure receives the JSON payload as a parameter.
+
+From the perspective of Python, the implementation is straightforward.
+
+Connect to Oracle.
+
+Pass the JSON string to a stored procedure.
+
+Commit the transaction if processing succeeds.
+
+Rollback the transaction if an error occurs.
+
+Finally, close the connection.
+
+This separation of responsibilities keeps Python focused on orchestration while Oracle handles database logic.
+
+An optional enhancement is the addition of a dedicated callproc_json method.
+
+Such a method improves readability and makes JSON processing a first-class capability within the OracleDB abstraction layer.
+
+Now let's discuss Phase Three, Oracle PL/SQL processing.
+
+When the JSON payload arrives in Oracle, the primary procedure begins by parsing the incoming CLOB into a JSON object.
+
+Oracle 19c and newer versions provide native JSON object types that make this process significantly easier than earlier approaches.
+
+The procedure extracts the operations array from the root JSON object.
+
+The array may contain one operation or many operations.
+
+Each operation is then processed individually.
+
+The procedure loops through the array, determines whether the operation is an insert or update, and dispatches processing to specialized routines.
+
+This design creates a clean separation between orchestration logic and business logic.
+
+Insert operations can be handled by one procedure while update operations can be handled by another.
+
+This approach improves maintainability and simplifies testing.
+
+Inside the insert procedure, Oracle extracts the SHRTATC object and retrieves individual values.
+
+Examples include institutional subject codes, course numbers, titles, effective terms, and transfer course information.
+
+Once extracted, these values are inserted into a holding table.
+
+The holding table acts as a staging area between incoming JSON and production tables.
+
+This staging pattern provides several advantages.
+
+First, it creates a complete audit trail.
+
+Second, it allows validation and review before final updates occur.
+
+Third, it simplifies error recovery.
+
+In addition to the main SHRTATC data, operations may contain nested arrays.
+
+Two examples shown in the design are attributes and comments.
+
+Oracle's JSON array support allows each element to be processed in a loop.
+
+Each attribute can be inserted into an attribute holding table.
+
+Each comment can be inserted into a comment holding table.
+
+Because the JSON structure supports nesting, complex business objects can be transmitted in a single payload while maintaining clear relationships between records.
+
+Next, let's examine Phase Four, error handling and transaction control.
+
+A robust integration architecture must anticipate failures.
+
+Failures may occur because of invalid data, database constraints, network interruptions, or unexpected business rules.
+
+The holding table strategy helps manage these situations.
+
+Each record includes a processing status.
+
+For example, records may be marked as pending, processed, or error.
+
+If processing succeeds, the record is marked as completed.
+
+If processing fails, the error message is captured and stored.
+
+The design also includes an audit table.
+
+The audit table records details such as the affected record, the table involved, the error message, and the time of the failure.
+
+This information becomes extremely valuable during troubleshooting and operational support.
+
+Transaction control is another critical aspect.
+
+The architecture uses commits when processing succeeds and rollbacks when processing fails.
+
+This ensures that partially processed transactions do not leave the database in an inconsistent state.
+
+By treating related updates as a single transaction, the system maintains data integrity.
+
+Now let's move into Phase Five, integration with the existing codebase.
+
+One of the strengths of this design is that it leverages existing query functions rather than replacing them.
+
+Functions that retrieve transfer buckets, articulation rows, attributes, and comments can continue operating exactly as they do today.
+
+The only difference is that their output is transformed into JSON structures.
+
+The resulting JSON becomes a transport mechanism between the data extraction layer and the Oracle processing layer.
+
+This allows existing business logic to remain intact while introducing a more flexible integration model.
+
+The architecture supports multiple implementation patterns.
+
+One pattern converts query results into JSON for audit and transport purposes.
+
+Another pattern builds JSON directly from query results and immediately sends it to Oracle.
+
+A third pattern reads JSON from external files and processes them without involving existing extraction functions.
+
+These options provide flexibility depending on operational requirements.
+
+Next, let's discuss testing.
+
+The design includes several levels of testing.
+
+Unit tests verify individual functions such as JSON loading, schema validation, and JSON serialization.
+
+Database tests verify that Oracle connections are established correctly and that stored procedures can be executed.
+
+Integration tests validate the entire workflow from data extraction through Oracle processing and transaction completion.
+
+Testing should include both successful and failure scenarios.
+
+Examples include malformed JSON, missing required fields, constraint violations, and transaction rollback conditions.
+
+Comprehensive testing increases confidence before deployment to production environments.
+
+Phase Seven covers deployment readiness.
+
+Before deployment, several items should be verified.
+
+The Oracle database version should be confirmed as 19c or newer.
+
+The python-oracledb driver should be installed and configured properly.
+
+The Oracle thick client should initialize successfully.
+
+All holding tables should exist with the appropriate constraints and indexes.
+
+PL/SQL procedures should compile without errors.
+
+Sample JSON files should be validated successfully.
+
+Procedure execution should be tested with representative data.
+
+Rollback behavior should be verified.
+
+Audit logging should be confirmed.
+
+Finally, performance testing should be conducted using realistic production volumes.
+
+Let's conclude with the primary benefits of this architecture.
+
+First, flexibility.
+
+JSON structures can evolve over time without requiring major redesigns.
+
+Second, auditability.
+
+Every incoming record can be stored and tracked through the holding table process.
+
+Third, error recovery.
+
+Failed records can be isolated, reviewed, corrected, and reprocessed.
+
+Fourth, transaction safety.
+
+Commit and rollback logic protects database consistency.
+
+Fifth, scalability.
+
+Multiple operations can be bundled into a single JSON payload and processed efficiently.
+
+Finally, maintainability.
+
+Python remains responsible for orchestration and validation, while Oracle remains responsible for data processing and persistence.
+
+This separation of concerns creates a clean architecture that is easier to understand, test, support, and extend over time.
+
+That concludes the detailed walkthrough of the Python to Oracle thick client JSON workflow architecture.
