@@ -7,10 +7,12 @@ from pathlib import Path
 
 from md_2_script import markdown_to_script
 from generate_wave import (
+    DEFAULT_LENGTH_SCALE,
     DEFAULT_PIPER_EXE,
     DEFAULT_VOICE_MODEL,
     generate_wav,
 )
+from pdf_to_script import pdf_to_script
 from wav_to_mp3 import FFMPEG_DOWNLOAD_URL, convert_wav_to_mp3
 
 
@@ -45,6 +47,21 @@ def _run_md_to_txt() -> Path:
     return txt_path
 
 
+def _run_pdf_to_txt() -> Path:
+    pdf_path = _ask_path("PDF input")
+    txt_default = pdf_path.with_name(f"{pdf_path.stem}_script.txt")
+    txt_path = _ask_path("Text output", txt_default)
+
+    created = pdf_to_script(
+        input_pdf=pdf_path,
+        output_text=txt_path,
+        pause_between_items=True,
+        overwrite=True,
+    )
+    print(f"Created script text: {created}")
+    return Path(created)
+
+
 def _run_txt_to_wav(default_txt: Path | None = None) -> Path:
     txt_path = _ask_path("Text input", default_txt)
     wav_default = txt_path.with_suffix(".wav")
@@ -52,12 +69,17 @@ def _run_txt_to_wav(default_txt: Path | None = None) -> Path:
 
     piper_exe = _ask_path("Piper executable", DEFAULT_PIPER_EXE)
     voice_model = _ask_path("Voice model (.onnx)", DEFAULT_VOICE_MODEL)
+    length_scale_raw = input(
+        f"Speech slowdown / length scale [{DEFAULT_LENGTH_SCALE}]: "
+    ).strip()
+    length_scale = float(length_scale_raw) if length_scale_raw else DEFAULT_LENGTH_SCALE
 
     created = generate_wav(
         text_file=txt_path,
         output_wav=wav_path,
         piper_exe=piper_exe,
         voice_model=voice_model,
+        length_scale=length_scale,
     )
     print(f"Created WAV: {created}")
     return Path(created)
@@ -129,13 +151,21 @@ def _run_full_pipeline() -> None:
     _run_wav_to_mp3(default_wav=wav_path)
 
 
+def _run_pdf_full_pipeline() -> None:
+    txt_path = _run_pdf_to_txt()
+    wav_path = _run_txt_to_wav(default_txt=txt_path)
+    _run_wav_to_mp3(default_wav=wav_path)
+
+
 def main() -> None:
     options = {
         "1": ("Markdown -> Script text", _run_md_to_txt),
         "2": ("Script text -> WAV", _run_txt_to_wav),
         "3": ("WAV -> MP3", _run_wav_to_mp3),
-        "4": ("Run full pipeline", _run_full_pipeline),
+        "4": ("Run full pipeline (Markdown)", _run_full_pipeline),
         "5": ("Install/Update FFmpeg (Windows)", _run_install_ffmpeg),
+        "6": ("PDF -> Script text", _run_pdf_to_txt),
+        "7": ("Run full pipeline (PDF)", _run_pdf_full_pipeline),
         "q": ("Quit", None),
     }
 
