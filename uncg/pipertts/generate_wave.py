@@ -11,6 +11,7 @@ DEFAULT_PIPER_EXE = Path(
     "C:/Users/mrchartier/AppData/Local/Python/pythoncore-3.14-64/Scripts/piper.exe"
 )
 DEFAULT_VOICE_MODEL = Path("C:/software/pipertts/models/en_US-lessac-medium.onnx")
+DEFAULT_LENGTH_SCALE = 1.15
 
 
 def generate_wav(
@@ -18,6 +19,7 @@ def generate_wav(
     output_wav: Path,
     piper_exe: Path,
     voice_model: Path,
+    length_scale: float = DEFAULT_LENGTH_SCALE,
 ) -> Path:
     text_file = Path(text_file)
     output_wav = Path(output_wav)
@@ -34,6 +36,8 @@ def generate_wav(
     narration = text_file.read_text(encoding="utf-8").strip()
     if not narration:
         raise ValueError("Input text file is empty.")
+    if length_scale <= 0:
+        raise ValueError("length_scale must be greater than 0.")
 
     output_wav.parent.mkdir(parents=True, exist_ok=True)
 
@@ -46,6 +50,8 @@ def generate_wav(
             narration,
             "--output_file",
             str(output_wav),
+            "--length_scale",
+            str(length_scale),
         ],
         capture_output=True,
         text=True,
@@ -88,6 +94,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_VOICE_MODEL,
         help="Path to Piper ONNX voice model.",
     )
+    parser.add_argument(
+        "--length-scale",
+        type=float,
+        default=DEFAULT_LENGTH_SCALE,
+        help="Speech speed scale for Piper (higher is slower). Default is slightly slower.",
+    )
     return parser
 
 
@@ -100,6 +112,7 @@ def main() -> None:
         output_wav=args.output,
         piper_exe=args.piper_exe,
         voice_model=args.voice_model,
+        length_scale=args.length_scale,
     )
 
     print(f"Audio generated successfully: {wav_path}")

@@ -36,7 +36,11 @@ def _ensure_sentence(text: str) -> str:
 	return f"{text}."
 
 
-def markdown_to_script(markdown: str, include_code_blocks: bool = False) -> str:
+def markdown_to_script(
+	markdown: str,
+	include_code_blocks: bool = False,
+	pause_between_items: bool = True,
+) -> str:
 	"""Convert markdown content into narration-ready plain text."""
 	output_lines: list[str] = []
 	in_code_block = False
@@ -93,6 +97,8 @@ def markdown_to_script(markdown: str, include_code_blocks: bool = False) -> str:
 			item = _normalize_inline(bullet_match.group(1))
 			if item:
 				output_lines.append(_ensure_sentence(item))
+				if pause_between_items:
+					output_lines.append("")
 			continue
 
 		# Ordered list.
@@ -102,6 +108,8 @@ def markdown_to_script(markdown: str, include_code_blocks: bool = False) -> str:
 			item = _normalize_inline(ordered_match.group(2))
 			if item:
 				output_lines.append(_ensure_sentence(f"Step {number}: {item}"))
+				if pause_between_items:
+					output_lines.append("")
 			continue
 
 		# Table formatting and alignment rows.
@@ -113,6 +121,8 @@ def markdown_to_script(markdown: str, include_code_blocks: bool = False) -> str:
 			cells = [cell for cell in cells if cell]
 			if cells and not all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
 				output_lines.append(_ensure_sentence(". ".join(cells)))
+				if pause_between_items:
+					output_lines.append("")
 			continue
 
 		# Fallback paragraph line.
@@ -150,6 +160,11 @@ def _build_parser() -> argparse.ArgumentParser:
 		help="Include fenced code blocks in output narration.",
 	)
 	parser.add_argument(
+		"--no-item-pauses",
+		action="store_true",
+		help="Disable extra pause spacing between list/table items.",
+	)
+	parser.add_argument(
 		"--overwrite",
 		action="store_true",
 		help="Overwrite output file if it already exists.",
@@ -175,7 +190,11 @@ def main() -> None:
 		)
 
 	markdown_text = input_path.read_text(encoding="utf-8")
-	script_text = markdown_to_script(markdown_text, include_code_blocks=args.include_code_blocks)
+	script_text = markdown_to_script(
+		markdown_text,
+		include_code_blocks=args.include_code_blocks,
+		pause_between_items=not args.no_item_pauses,
+	)
 	output_path.write_text(script_text, encoding="utf-8")
 
 	print(f"Script generated: {output_path.resolve()}")
