@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import platform
 import subprocess
+import sys
 from pathlib import Path
 
 from md_2_script import markdown_to_script
@@ -32,6 +33,77 @@ def _ask_path(prompt: str, default: Path | None = None) -> Path:
     if not raw:
         raise ValueError("A value is required.")
     return Path(raw)
+
+
+def _piper_downloader_python(piper_exe: Path) -> Path:
+    candidates = [
+        Path(sys.executable),
+        piper_exe.parent.parent / "python.exe",
+    ]
+    checked: set[Path] = set()
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        if candidate in checked or not candidate.is_file():
+            continue
+        checked.add(candidate)
+        check = subprocess.run(
+            [str(candidate), "-c", "import piper.download_voices"],
+            capture_output=True,
+            text=True,
+        )
+        if check.returncode == 0:
+            return candidate
+
+    raise RuntimeError(
+        "Could not find Python with Piper installed. Install piper-tts in the "
+        "active environment or beside the configured Piper executable."
+    )
+
+
+def _choose_voice_model(piper_exe: Path) -> Path:
+    default_voice = DEFAULT_VOICE_MODEL.stem.rsplit("-", 1)[0]
+    available_qualities = {
+        "en_GB-cori": ("medium", "high"),
+    }.get(default_voice)
+    if not available_qualities:
+        raise RuntimeError(f"No quality options are configured for {default_voice}.")
+
+    default_quality = DEFAULT_VOICE_MODEL.stem.rsplit("-", 1)[1]
+    choices = "/".join(available_qualities)
+    while True:
+        selected = input(f"Voice quality ({choices}) [{default_quality}]: ").strip().lower()
+        quality = selected or default_quality
+        if quality in available_qualities:
+            break
+        print(f"Choose one of the available qualities: {choices}.")
+
+    model_path = DEFAULT_VOICE_MODEL.with_name(f"{default_voice}-{quality}.onnx")
+    config_path = model_path.with_suffix(model_path.suffix + ".json")
+    if not model_path.is_file() or not config_path.is_file():
+        downloader_python = _piper_downloader_python(piper_exe)
+        voice_name = f"{default_voice}-{quality}"
+        print(f"Downloading Piper voice: {voice_name}")
+        process = subprocess.run(
+            [
+                str(downloader_python),
+                "-m",
+                "piper.download_voices",
+                voice_name,
+                "--download-dir",
+                str(model_path.parent),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if process.stdout.strip():
+            print(process.stdout.strip())
+        if process.returncode != 0:
+            details = process.stderr.strip() or "No error details were returned."
+            raise RuntimeError(f"Piper voice download failed: {details}")
+        if not model_path.is_file() or not config_path.is_file():
+            raise RuntimeError(f"Voice download did not create model and config for {voice_name}.")
+
+    return model_path
 
 
 def _run_md_to_txt() -> Path:
@@ -68,7 +140,7 @@ def _run_txt_to_wav(default_txt: Path | None = None) -> Path:
     wav_path = _ask_path("WAV output", wav_default)
 
     piper_exe = _ask_path("Piper executable", DEFAULT_PIPER_EXE)
-    voice_model = _ask_path("Voice model (.onnx)", DEFAULT_VOICE_MODEL)
+    voice_model = _choose_voice_model(piper_exe)
     length_scale_raw = input(
         f"Speech slowdown / length scale [{DEFAULT_LENGTH_SCALE}]: "
     ).strip()
