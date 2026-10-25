@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "status": "experimental-source-port-not-build-or-runtime-validated",
+  "ai_assistance": "GitHub Copilot",
+  "automation": {
+    "entrypoint": "prepare.py",
+    "python_minimum": "3.10",
+    "actions": ["verify", "prepare", "build"],
+    "installs_software": false,
+    "runner_tests": "test_prepare.py",
+    "checks": {
+      "offline_fixture_tests_windows": 5,
+      "offline_fixture_tests_linux": 5,
+      "real_bundle_offline_linux_preparation": true,
+      "cargo_build_execution_tested": false
+    }
+  },
+  "permission_policy": "Original broad saved input-consent behavior unchanged",
+  "unresolved_review_items": [
+    "Potential stale EIS event-source callbacks affecting a replacement session; not reproduced or ruled out"
+  ],
+  "not_verified": [
+    "Dependency resolution",
+    "Rust typechecking",
+    "Clippy",
+    "Unit tests for full projects",
+    "Linking",
+    "COSMIC/Synergy runtime",
+    "Installed distribution/package compatibility",
+    "Clipboard transfers"
+  ],
+  "projects": [
+    {
+      "name": "compositor",
+      "repository": "https://github.com/pop-os/cosmic-comp.git",
+      "target_commit": "8cb1802caada438bb5cc7670dfabdaca5fad0502",
+      "source_feature_commit": "d618128f5434fa02af65e1ac08bfb728caa56830",
+      "source_parent_commit": "651f701f84e46d0262a129cb9ac30537d648cb08",
+      "result_tree": "f1d94fe7e6cd0343098962f4b29dbc305a622f7f",
+      "patch": "cosmic-comp-input-capture.patch",
+      "sha256": "1eebe5c0b850c5ffb9df9c538e535c16cc28402a66258c8bff73fe5eb2c1cea9",
+      "changed_files": [
+        "Cargo.lock",
+        "Cargo.toml",
+        "src/backend/render/cursor.rs",
+        "src/dbus/input_capture.rs",
+        "src/dbus/mod.rs",
+        "src/dbus/name_owners.rs",
+        "src/input/mod.rs",
+        "src/input_capture.rs",
+        "src/lib.rs",
+        "src/main.rs",
+        "src/state.rs",
+        "src/wayland/handlers/output_configuration.rs",
+        "src/wayland/handlers/session_lock.rs",
+        "src/xwayland.rs"
+      ],
+      "checks": {
+        "rust_1_93_format_and_parse": true,
+        "rust_files_checked": 12,
+        "git_diff_check": true,
+        "clean_target_apply_check": true,
+        "clean_target_apply": true,
+        "result_tree_matches": true
+      }
+    },
+    {
+      "name": "portal",
+      "repository": "https://github.com/pop-os/xdg-desktop-portal-cosmic.git",
+      "target_commit": "f448ddfb296bf7bb23517b24b2f532559a334a1c",
+      "source_feature_commit": "3fddb5a61c4f4655d331e98ac19d39dceeade8de",
+      "source_parent_commit": "2f41161176368840c67e2de9b8a24786accb100c",
+      "result_tree": "61fc63e3e5a0702b0d17ce14c899ff7ff40bb6f1",
+      "patch": "xdg-desktop-portal-cosmic-input-capture.patch",
+      "sha256": "294abc81f0e2d286d8d1a9b96abe6adf79312400a37d56a8eed9ebcd15378618",
+      "changed_files": [
+        "Cargo.toml",
+        "data/cosmic.portal",
+        "i18n/en/xdg_desktop_portal_cosmic.ftl",
+        "src/access.rs",
+        "src/app.rs",
+        "src/input_capture.rs",
+        "src/main.rs",
+        "src/subscription.rs"
+      ],
+      "checks": {
+        "rust_1_93_format_and_parse": true,
+        "rust_files_checked": 5,
+        "git_diff_check": true,
+        "clean_target_apply_check": true,
+        "clean_target_apply": true,
+        "result_tree_matches": true
+      }
+    }
+  ]
+}

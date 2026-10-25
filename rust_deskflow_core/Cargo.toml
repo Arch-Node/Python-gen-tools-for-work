@@ -1,0 +1,29 @@
+[package]
+name = "rust_deskflow_core"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Experimental Deskflow-compatible framing and transport library"
+license-file = "LICENSE"
+
+[package.metadata.deskflow]
+repository = "https://github.com/deskflow/deskflow"
+reference-commit = "c1b19244a37bd238038ea2bf0ab56d9efc2de5d7"
+reference-files = [
+	"src/lib/deskflow/PacketStreamFilter.cpp",
+	"src/lib/deskflow/ProtocolTypes.h",
+	"src/lib/deskflow/ProtocolTypes.cpp",
+	"src/lib/deskflow/ProtocolUtil.cpp",
+	"src/lib/deskflow/ClipboardChunk.cpp",
+	"src/lib/deskflow/ClipboardTypes.h",
+	"src/lib/deskflow/IClipboard.cpp",
+	"src/lib/deskflow/IClipboard.h",
+	"src/lib/client/Client.cpp",
+	"src/lib/client/ServerProxy.cpp",
+	"src/lib/server/ClientProxyUnknown.cpp",
+	"src/lib/server/ClientProxy1_0.cpp",
+]
+
+[package.metadata.licensing]
+expression = "GPL-2.0-only WITH LicenseRef-OpenSSL-Exception"
+exception-file = "LICENSE-OpenSSL-exception"
